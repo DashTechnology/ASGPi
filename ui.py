@@ -220,6 +220,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         # Welcome/Goodbye message container
         message_container = QtWidgets.QWidget()
+        message_container.setFixedHeight(80)  # Fixed height to prevent layout changes
         message_container.setStyleSheet(
             """
             QWidget {
@@ -240,6 +241,8 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.info_label.setStyleSheet("color: white;")
         self.info_label.setWordWrap(True)
         message_layout.addWidget(self.info_label)
+        message_container.hide()  # Initially hidden
+        self.message_container = message_container  # Store reference for later use
 
         main_layout.addWidget(message_container)
 
@@ -528,10 +531,6 @@ class AttendanceApp(QtWidgets.QMainWindow):
         formatted_datetime = current_datetime.strftime("%B %d, %Y %I:%M:%S %p")
         self.datetime_label.setText(formatted_datetime)
 
-    def clear_welcome_message(self) -> None:
-        """Clears the welcome/goodbye message after timeout."""
-        self.info_label.clear()
-
     def show_message(self, message: str, error: bool = False) -> None:
         """
         Displays a message in the info label.
@@ -547,9 +546,15 @@ class AttendanceApp(QtWidgets.QMainWindow):
         )
         self.info_label.setStyleSheet(style)
         self.info_label.setText(message)
+        self.message_container.show()  # Show container when message is set
 
         # Start the timer to clear the message after 5 seconds
         self.message_timer.start(5000)  # Increased from 3000 to 5000 milliseconds
+
+    def clear_welcome_message(self) -> None:
+        """Clears the welcome/goodbye message after timeout."""
+        self.info_label.clear()
+        self.message_container.hide()  # Hide container when message is cleared
 
     def append_log(
         self, log_message: str, is_sign_in: bool = False, is_sign_out: bool = False
