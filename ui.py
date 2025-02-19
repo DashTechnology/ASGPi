@@ -218,6 +218,31 @@ class AttendanceApp(QtWidgets.QMainWindow):
         top_container.setStretch(1, 9)  # Header takes 9 parts
         main_layout.addLayout(top_container)
 
+        # Welcome/Goodbye message container
+        message_container = QtWidgets.QWidget()
+        message_container.setStyleSheet(
+            """
+            QWidget {
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 15px;
+                margin: 5px 0;
+            }
+            """
+        )
+        message_layout = QtWidgets.QVBoxLayout(message_container)
+        message_layout.setContentsMargins(10, 5, 10, 5)
+
+        # Welcome message
+        self.info_label = QtWidgets.QLabel("", self)
+        self.info_label.setAlignment(QtCore.Qt.AlignCenter)
+        info_font = QtGui.QFont("Arial", info_size, QtGui.QFont.Bold)
+        self.info_label.setFont(info_font)
+        self.info_label.setStyleSheet("color: white;")
+        self.info_label.setWordWrap(True)
+        message_layout.addWidget(self.info_label)
+
+        main_layout.addWidget(message_container)
+
         # Content container
         content_container = QtWidgets.QWidget()
         content_container.setStyleSheet(
@@ -230,15 +255,6 @@ class AttendanceApp(QtWidgets.QMainWindow):
         """
         )
         content_layout = QtWidgets.QVBoxLayout(content_container)
-
-        # Welcome message
-        self.info_label = QtWidgets.QLabel("", self)
-        self.info_label.setAlignment(QtCore.Qt.AlignCenter)
-        info_font = QtGui.QFont("Arial", info_size, QtGui.QFont.Bold)
-        self.info_label.setFont(info_font)
-        self.info_label.setStyleSheet("color: white; padding: 10px;")
-        self.info_label.setWordWrap(True)
-        content_layout.addWidget(self.info_label)
 
         # Log text area
         self.log_text = QtWidgets.QPlainTextEdit(self)
@@ -259,8 +275,6 @@ class AttendanceApp(QtWidgets.QMainWindow):
         """
         )
         content_layout.addWidget(self.log_text)
-        content_layout.setStretch(0, 1)  # Welcome message takes 1 part
-        content_layout.setStretch(1, 9)  # Log text takes 9 parts
 
         main_layout.addWidget(content_container)
 
