@@ -211,16 +211,6 @@ class AttendanceApp(QtWidgets.QMainWindow):
         subtitle_label.setStyleSheet("margin-top: -5px;")  # Negative margin to pull up
         text_layout.addWidget(subtitle_label)
 
-        # Date and Time Display
-        self.datetime_label = QtWidgets.QLabel("", self)
-        self.datetime_label.setAlignment(QtCore.Qt.AlignCenter)
-        datetime_font = QtGui.QFont("Arial", datetime_size)
-        self.datetime_label.setFont(datetime_font)
-        self.datetime_label.setStyleSheet(
-            "color: #CCCCCC; margin-top: -5px;"
-        )  # Negative margin to pull up
-        text_layout.addWidget(self.datetime_label)
-
         # Add the text container to the title layout
         title_layout.addWidget(text_container)
         header_layout.addWidget(title_container)
@@ -245,7 +235,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
         message_layout = QtWidgets.QVBoxLayout(message_container)
         message_layout.setContentsMargins(10, 5, 10, 5)
 
-        # Welcome message
+        # Info label for welcome/goodbye messages and datetime
         self.info_label = QtWidgets.QLabel("", self)
         self.info_label.setAlignment(QtCore.Qt.AlignCenter)
         info_font = QtGui.QFont("Arial", info_size, QtGui.QFont.Bold)
@@ -253,8 +243,8 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.info_label.setStyleSheet("color: white;")
         self.info_label.setWordWrap(True)
         message_layout.addWidget(self.info_label)
-        message_container.hide()  # Initially hidden
-        self.message_container = message_container  # Store reference for later use
+        message_container.show()  # Always show the container since it will display datetime
+        self.message_container = message_container
 
         main_layout.addWidget(message_container)
 
@@ -538,10 +528,14 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.reader_thread.start()
 
     def update_datetime(self) -> None:
-        """Updates the date and time display."""
-        current_datetime = datetime.now()
-        formatted_datetime = current_datetime.strftime("%B %d, %Y %I:%M:%S %p")
-        self.datetime_label.setText(formatted_datetime)
+        """Updates the date and time display in the info label when no message is shown."""
+        if not self.info_label.text() or self.info_label.text().startswith(
+            "Current Time:"
+        ):
+            current_datetime = datetime.now()
+            formatted_datetime = current_datetime.strftime("%B %d, %Y %I:%M:%S %p")
+            self.info_label.setText(f"Current Time: {formatted_datetime}")
+            self.info_label.setStyleSheet("color: #CCCCCC; font-size: 16pt;")
 
     def show_message(self, message: str, error: bool = False) -> None:
         """
@@ -558,15 +552,13 @@ class AttendanceApp(QtWidgets.QMainWindow):
         )
         self.info_label.setStyleSheet(style)
         self.info_label.setText(message)
-        self.message_container.show()  # Show container when message is set
 
         # Start the timer to clear the message after 5 seconds
         self.message_timer.start(5000)  # Increased from 3000 to 5000 milliseconds
 
     def clear_welcome_message(self) -> None:
-        """Clears the welcome/goodbye message after timeout."""
-        self.info_label.clear()
-        self.message_container.hide()  # Hide container when message is cleared
+        """Clears the welcome/goodbye message and shows the current time."""
+        self.update_datetime()  # Show current time after clearing message
 
     def append_log(
         self, log_message: str, is_sign_in: bool = False, is_sign_out: bool = False
