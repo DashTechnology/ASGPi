@@ -109,12 +109,13 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         # Create status circle
         self.status_circle = QtWidgets.QWidget(self)
-        self.status_circle.setFixedSize(100, 100)  # Fixed size for the circle
+        self.status_circle.setFixedSize(150, 150)  # Increased circle size
         self.status_circle.setStyleSheet(
             """
             QWidget {
                 background-color: rgba(128, 128, 128, 0.5);
-                border-radius: 50px;
+                border-radius: 75px;
+                border: 2px solid rgba(255, 255, 255, 0.2);
             }
             """
         )
@@ -123,17 +124,17 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.breath_animation = QtCore.QPropertyAnimation(self.status_circle, b"size")
         self.breath_animation.setDuration(2000)  # 2 seconds for one breath cycle
         self.breath_animation.setLoopCount(-1)  # Infinite loop
-        self.breath_animation.setStartValue(QtCore.QSize(90, 90))
-        self.breath_animation.setEndValue(QtCore.QSize(100, 100))
+        self.breath_animation.setStartValue(QtCore.QSize(140, 140))
+        self.breath_animation.setEndValue(QtCore.QSize(150, 150))
         self.breath_animation.setEasingCurve(QtCore.QEasingCurve.InOutQuad)
         self.breath_animation.start()
 
         # Add the status circle to a container to position it
         circle_container = QtWidgets.QWidget()
-        circle_container.setFixedSize(120, 120)  # Slightly larger than the circle
+        circle_container.setFixedSize(170, 170)  # Slightly larger than the circle
         circle_layout = QtWidgets.QVBoxLayout(circle_container)
         circle_layout.addWidget(self.status_circle, 0, QtCore.Qt.AlignCenter)
-        circle_layout.setContentsMargins(10, 10, 10, 10)
+        circle_layout.setContentsMargins(5, 5, 5, 5)
 
         # Set responsive margins (2% of screen width/height)
         margin = int(min(screen_size.width(), screen_size.height()) * 0.02)
@@ -165,6 +166,28 @@ class AttendanceApp(QtWidgets.QMainWindow):
         )
         header_layout = QtWidgets.QVBoxLayout(header_container)
         header_layout.setSpacing(5)  # Reduced spacing between header elements
+
+        # Title Section
+        title_label = QtWidgets.QLabel("Associated Student Government", self)
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        title_font = QtGui.QFont("Arial", title_size, QtGui.QFont.Bold)
+        title_label.setFont(title_font)
+        header_layout.addWidget(title_label)
+
+        # Subtitle
+        subtitle_label = QtWidgets.QLabel("Los Angeles City College", self)
+        subtitle_label.setAlignment(QtCore.Qt.AlignCenter)
+        subtitle_font = QtGui.QFont("Arial", subtitle_size)
+        subtitle_label.setFont(subtitle_font)
+        header_layout.addWidget(subtitle_label)
+
+        # Date and Time Display
+        self.datetime_label = QtWidgets.QLabel("", self)
+        self.datetime_label.setAlignment(QtCore.Qt.AlignCenter)
+        datetime_font = QtGui.QFont("Arial", datetime_size)
+        self.datetime_label.setFont(datetime_font)
+        self.datetime_label.setStyleSheet("color: #CCCCCC;")
+        header_layout.addWidget(self.datetime_label)
 
         top_container.addWidget(header_container)
         top_container.setStretch(0, 1)  # Circle takes 1 part
@@ -330,7 +353,8 @@ class AttendanceApp(QtWidgets.QMainWindow):
             f"""
             QWidget {{
                 background-color: {color_map.get(color, color_map['grey'])};
-                border-radius: 50px;
+                border-radius: 75px;
+                border: 2px solid rgba(255, 255, 255, 0.2);
             }}
             """
         )
