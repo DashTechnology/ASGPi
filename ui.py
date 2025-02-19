@@ -43,6 +43,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.is_sleeping = False
         self.central_widget = None
         self.is_processing_tap = False
+        self.is_showing_message = False  # Track if we're showing a message
         self.setup_ui()
 
         try:
@@ -568,10 +569,11 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
     def update_datetime(self) -> None:
         """Updates the date and time display in the info label when no message is shown."""
-        current_datetime = datetime.now()
-        formatted_datetime = current_datetime.strftime("%B %d, %Y %I:%M:%S %p")
-        self.info_label.setText(f"{formatted_datetime}")
-        self.info_label.setStyleSheet("color: #CCCCCC; font-size: 16pt;")
+        if not self.is_showing_message:  # Only update if no message is being shown
+            current_datetime = datetime.now()
+            formatted_datetime = current_datetime.strftime("%B %d, %Y %I:%M:%S %p")
+            self.info_label.setText(f"{formatted_datetime}")
+            self.info_label.setStyleSheet("color: #CCCCCC; font-size: 16pt;")
 
     def show_message(self, message: str, error: bool = False) -> None:
         """
@@ -583,6 +585,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
         """
         # Stop any existing timer to prevent conflicts
         self.message_timer.stop()
+        self.is_showing_message = True  # Set flag to prevent datetime updates
 
         style = (
             "color: red; font-size: 16pt;"
@@ -597,6 +600,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
     def clear_welcome_message(self) -> None:
         """Clears the welcome/goodbye message and shows the current time."""
+        self.is_showing_message = False  # Clear flag to allow datetime updates
         self.info_label.clear()  # Clear the current message first
         self.update_datetime()  # Show current time after clearing message
 
