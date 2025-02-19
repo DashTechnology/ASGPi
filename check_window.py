@@ -226,6 +226,9 @@ class CheckHoursWindow(QtWidgets.QDialog):
                 self.db_manager.supabase.table("asg_logs")
                 .select("*")
                 .eq("user_id", member["id"])
+                .order(
+                    "sign_in_time", desc=True
+                )  # Order by sign_in_time in descending order
                 .execute()
             )
 
