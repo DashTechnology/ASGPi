@@ -99,7 +99,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
             screen_size.height() * 0.02
         )  # 2% of screen height (~12 pts)
         info_size = int(screen_size.height() * 0.03)  # 3% of screen height (~18 pts)
-        log_size = int(screen_size.height() * 0.015)  # 1.5% of screen height (~9 pts)
+        log_size = int(screen_size.height() * 0.025)  # 2.5% of screen height (~15 pts)
         footer_size = int(screen_size.height() * 0.02)  # 2% of screen height (~12 pts)
 
         # Create central widget and layout
@@ -107,41 +107,38 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.setCentralWidget(self.central_widget)
         main_layout = QtWidgets.QVBoxLayout(self.central_widget)
 
-        # Create status circle
-        self.status_circle = QtWidgets.QWidget(self)
-        self.status_circle.setFixedSize(150, 150)  # Increased circle size
-        self.status_circle.setStyleSheet(
+        # Create status circle (now using ASG logo)
+        self.status_indicator = QtWidgets.QLabel(self)
+        indicator_size = int(screen_size.height() * 0.25)  # 25% of screen height
+        self.status_indicator.setFixedSize(indicator_size, indicator_size)
+        self.base_logo_pixmap = QtGui.QPixmap("assets/ASG.png")
+        self.scaled_logo = self.base_logo_pixmap.scaled(
+            indicator_size,
+            indicator_size,
+            QtCore.Qt.KeepAspectRatio,
+            QtCore.Qt.SmoothTransformation,
+        )
+        self.status_indicator.setPixmap(self.scaled_logo)
+        self.status_indicator.setStyleSheet(
             """
-            QWidget {
-                background-color: rgba(128, 128, 128, 0.5);
-                border-radius: 75px;
-                border: 2px solid rgba(255, 255, 255, 0.2);
+            QLabel {
+                background-color: transparent;
+                padding: 10px;
             }
             """
         )
 
-        # Create breathing animation
-        self.breath_animation = QtCore.QPropertyAnimation(self.status_circle, b"size")
-        self.breath_animation.setDuration(2000)  # 2 seconds for one breath cycle
-        self.breath_animation.setLoopCount(-1)  # Infinite loop
-        self.breath_animation.setStartValue(QtCore.QSize(140, 140))
-        self.breath_animation.setEndValue(QtCore.QSize(150, 150))
-        self.breath_animation.setEasingCurve(QtCore.QEasingCurve.InOutQuad)
-        self.breath_animation.start()
-
         # Add the status circle to a container to position it
         circle_container = QtWidgets.QWidget()
-        circle_container.setFixedSize(170, 170)  # Slightly larger than the circle
+        circle_container.setFixedSize(indicator_size + 20, indicator_size + 20)
         circle_layout = QtWidgets.QVBoxLayout(circle_container)
-        circle_layout.addWidget(self.status_circle, 0, QtCore.Qt.AlignCenter)
+        circle_layout.addWidget(self.status_indicator, 0, QtCore.Qt.AlignCenter)
         circle_layout.setContentsMargins(5, 5, 5, 5)
 
         # Set responsive margins (2% of screen width/height)
         margin = int(min(screen_size.width(), screen_size.height()) * 0.02)
         main_layout.setContentsMargins(margin, margin, margin, margin)
-        main_layout.setSpacing(
-            int(margin * 0.5)
-        )  # Reduced spacing between main elements
+        main_layout.setSpacing(int(margin * 0.5))
 
         # Create a horizontal layout for the circle and header
         top_container = QtWidgets.QHBoxLayout()
@@ -174,7 +171,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         # Add small ASG logo
         logo_label = QtWidgets.QLabel(self)
-        logo_size = int(screen_size.height() * 0.08)  # 8% of screen height
+        logo_size = int(screen_size.height() * 0.12)  # 12% of screen height
         logo_pixmap = QtGui.QPixmap("assets/ASG.png")
         scaled_pixmap = logo_pixmap.scaled(
             logo_size,
@@ -320,24 +317,31 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
     def set_circle_color(self, color: str) -> None:
         """
-        Sets the status circle color.
+        Sets the status indicator color by applying a color overlay to the ASG logo.
 
-        @param color: Color to set the circle to (e.g., 'grey', 'green', 'red')
+        @param color: Color to set the indicator to (e.g., 'grey', 'green', 'red')
         """
+        # Color mapping with higher opacity for better visibility
         color_map = {
-            "grey": "rgba(128, 128, 128, 0.5)",
-            "green": "rgba(0, 255, 0, 0.5)",
-            "red": "rgba(255, 0, 0, 0.5)",
+            "grey": QtGui.QColor(128, 128, 128, 180),
+            "green": QtGui.QColor(0, 255, 0, 180),
+            "red": QtGui.QColor(255, 0, 0, 180),
         }
-        self.status_circle.setStyleSheet(
-            f"""
-            QWidget {{
-                background-color: {color_map.get(color, color_map['grey'])};
-                border-radius: 75px;
-                border: 2px solid rgba(255, 255, 255, 0.2);
-            }}
-            """
-        )
+
+        # Get the color from the map
+        overlay_color = color_map.get(color, color_map["grey"])
+
+        # Create a copy of the original pixmap
+        colored_pixmap = self.scaled_logo.copy()
+
+        # Create a painter to apply the color overlay
+        painter = QtGui.QPainter(colored_pixmap)
+        painter.setCompositionMode(QtGui.QPainter.CompositionMode_SourceAtop)
+        painter.fillRect(colored_pixmap.rect(), overlay_color)
+        painter.end()
+
+        # Set the colored pixmap
+        self.status_indicator.setPixmap(colored_pixmap)
 
     def reset_circle_color(self) -> None:
         """Resets the status circle color to grey after delay."""
