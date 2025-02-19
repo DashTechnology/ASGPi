@@ -297,7 +297,29 @@ class AttendanceApp(QtWidgets.QMainWindow):
         footer_container.setFixedHeight(25)  # Even smaller height
         footer_layout = QtWidgets.QHBoxLayout(footer_container)
         footer_layout.setContentsMargins(10, 0, 10, 0)
-        footer_layout.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+        # Add Check Hours button
+        check_hours_btn = QtWidgets.QPushButton("Check Hours", self)
+        check_hours_btn.setFont(QtGui.QFont("Arial", 11))
+        check_hours_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 5px;
+                padding: 5px 15px;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+            """
+        )
+        check_hours_btn.clicked.connect(self.show_check_hours_window)
+        footer_layout.addWidget(check_hours_btn)
+
+        # Add spacer to push Dash Tech credit to the right
+        footer_layout.addStretch()
 
         footer_label = QtWidgets.QLabel("powered by Dash Technology", self)
         footer_font = QtGui.QFont("Arial", 11)  # Even smaller font size
@@ -529,13 +551,10 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
     def update_datetime(self) -> None:
         """Updates the date and time display in the info label when no message is shown."""
-        if not self.info_label.text() or self.info_label.text().startswith(
-            "Current Time:"
-        ):
-            current_datetime = datetime.now()
-            formatted_datetime = current_datetime.strftime("%B %d, %Y %I:%M:%S %p")
-            self.info_label.setText(f"Current Time: {formatted_datetime}")
-            self.info_label.setStyleSheet("color: #CCCCCC; font-size: 16pt;")
+        current_datetime = datetime.now()
+        formatted_datetime = current_datetime.strftime("%B %d, %Y %I:%M:%S %p")
+        self.info_label.setText(f"Current Time: {formatted_datetime}")
+        self.info_label.setStyleSheet("color: #CCCCCC; font-size: 16pt;")
 
     def show_message(self, message: str, error: bool = False) -> None:
         """
@@ -545,6 +564,9 @@ class AttendanceApp(QtWidgets.QMainWindow):
         @param message: Message to display.
         @param error: Flag to indicate error (displays in red if True).
         """
+        # Stop any existing timer to prevent conflicts
+        self.message_timer.stop()
+
         style = (
             "color: red; font-size: 16pt;"
             if error
@@ -554,10 +576,11 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.info_label.setText(message)
 
         # Start the timer to clear the message after 5 seconds
-        self.message_timer.start(5000)  # Increased from 3000 to 5000 milliseconds
+        self.message_timer.start(5000)
 
     def clear_welcome_message(self) -> None:
         """Clears the welcome/goodbye message and shows the current time."""
+        self.info_label.clear()  # Clear the current message first
         self.update_datetime()  # Show current time after clearing message
 
     def append_log(
@@ -636,6 +659,38 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         except Exception as e:
             self._show_error_and_exit(f"Error during registration: {str(e)}")
+
+    def show_check_hours_window(self) -> None:
+        """
+        Shows the hours checking window.
+        This allows members to check their accumulated hours by tapping their RFID card.
+        """
+        try:
+            # Stop the current RFID reader
+            if hasattr(self, "rfid_reader"):
+                self.rfid_reader.stop_reading()
+                if hasattr(self, "reader_thread"):
+                    self.reader_thread.join(timeout=1.0)
+
+            # Import here to avoid circular imports
+            from check_window import CheckHoursWindow
+
+            # Show check hours dialog with the same RFID reader instance
+            check_window = CheckHoursWindow(parent=self, rfid_reader=self.rfid_reader)
+            check_window.setWindowModality(QtCore.Qt.ApplicationModal)
+            check_window.show()
+            check_window.raise_()
+            check_window.activateWindow()
+
+            result = check_window.exec_()
+
+            # Reinitialize and restart the RFID reader
+            if hasattr(self, "rfid_reader"):
+                self.rfid_reader.reinitialize()
+                self.start_rfid_reader()
+
+        except Exception as e:
+            self._show_error_and_exit(f"Error opening check hours window: {str(e)}")
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """
