@@ -411,7 +411,9 @@ class AttendanceApp(QtWidgets.QMainWindow):
         if not rfid_tag:
             self.show_message("Error: Invalid card read.", error=True)
             self.set_circle_color("red")
-            QtCore.QTimer.singleShot(5000, self.reset_circle_color)
+            QtCore.QTimer.singleShot(
+                config.MESSAGE_DISPLAY_DURATION, self.reset_circle_color
+            )
             return
 
         try:
@@ -420,7 +422,9 @@ class AttendanceApp(QtWidgets.QMainWindow):
             if not member:
                 self.show_message("Error: Unknown RFID card.", error=True)
                 self.set_circle_color("red")
-                QtCore.QTimer.singleShot(5000, self.reset_circle_color)
+                QtCore.QTimer.singleShot(
+                    config.MESSAGE_DISPLAY_DURATION, self.reset_circle_color
+                )
                 return
 
             # Get member's position information
@@ -441,14 +445,18 @@ class AttendanceApp(QtWidgets.QMainWindow):
                                 "Sign-in not allowed after 7:00 PM", error=True
                             )
                             self.set_circle_color("red")
-                            QtCore.QTimer.singleShot(5000, self.reset_circle_color)
+                            QtCore.QTimer.singleShot(
+                                config.MESSAGE_DISPLAY_DURATION, self.reset_circle_color
+                            )
                             return
                         elif log_entry.get("error") == "before_hours":
                             self.show_message(
                                 "Sign-in not allowed before 7:30 AM", error=True
                             )
                             self.set_circle_color("red")
-                            QtCore.QTimer.singleShot(5000, self.reset_circle_color)
+                            QtCore.QTimer.singleShot(
+                                config.MESSAGE_DISPLAY_DURATION, self.reset_circle_color
+                            )
                             return
                     self.show_message(
                         f"Welcome {first_name}! Signed in at {current_time}"
@@ -478,13 +486,17 @@ class AttendanceApp(QtWidgets.QMainWindow):
                     self.show_message("Error recording sign out.", error=True)
                     self.set_circle_color("red")
 
-            # Reset circle color after 5 seconds
-            QtCore.QTimer.singleShot(5000, self.reset_circle_color)
+            # Reset circle color after the configured duration
+            QtCore.QTimer.singleShot(
+                config.MESSAGE_DISPLAY_DURATION, self.reset_circle_color
+            )
 
         except Exception as e:
             self.show_message(f"Error processing card: {str(e)}", error=True)
             self.set_circle_color("red")
-            QtCore.QTimer.singleShot(5000, self.reset_circle_color)
+            QtCore.QTimer.singleShot(
+                config.MESSAGE_DISPLAY_DURATION, self.reset_circle_color
+            )
 
     def check_system_state(self) -> None:
         """
@@ -580,8 +592,8 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.info_label.setStyleSheet(style)
         self.info_label.setText(message)
 
-        # Start the timer to clear the message after 5 seconds
-        self.message_timer.start(5000)
+        # Start the timer to clear the message after the configured duration
+        self.message_timer.start(config.MESSAGE_DISPLAY_DURATION)
 
     def clear_welcome_message(self) -> None:
         """Clears the welcome/goodbye message and shows the current time."""

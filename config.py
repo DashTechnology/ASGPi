@@ -33,5 +33,8 @@ WINDOW_GEOMETRY: tuple[int, int, int, int] = (
 )  # x, y, width, height
 AUTO_SIGNOUT_CHECK_INTERVAL: int = 60000  # milliseconds (1 minute)
 
+# Message display duration in milliseconds (5 seconds)
+MESSAGE_DISPLAY_DURATION: int = 5000
+
 # Development mode flag. When set to True, bypasses sign-in time restrictions and sleep/wake auto adjustments.
 DEV_MODE: bool = False
