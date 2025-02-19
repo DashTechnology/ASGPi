@@ -175,7 +175,9 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         # Add ASG logo
         logo_label = QtWidgets.QLabel(self)
-        logo_size = int(screen_size.height() * 0.15)  # 15% of screen height
+        logo_size = int(
+            screen_size.height() * 0.18
+        )  # 18% of screen height (increased from 15%)
         logo_pixmap = QtGui.QPixmap("assets/ASG.png")
         scaled_pixmap = logo_pixmap.scaled(
             logo_size,
@@ -185,13 +187,13 @@ class AttendanceApp(QtWidgets.QMainWindow):
         )
         logo_label.setPixmap(scaled_pixmap)
         logo_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        logo_label.setStyleSheet("padding-right: 15px;")
+        logo_label.setStyleSheet("padding-right: 10px;")  # Reduced padding
         title_layout.addWidget(logo_label)
 
         # Create a container for title and subtitle
         text_container = QtWidgets.QWidget()
         text_layout = QtWidgets.QVBoxLayout(text_container)
-        text_layout.setSpacing(0)  # Minimal spacing between title and subtitle
+        text_layout.setSpacing(0)  # No spacing between elements
         text_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
 
         # Title text
@@ -206,7 +208,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
         subtitle_label.setAlignment(QtCore.Qt.AlignCenter)
         subtitle_font = QtGui.QFont("Arial", subtitle_size)
         subtitle_label.setFont(subtitle_font)
-        subtitle_label.setStyleSheet("margin-top: 2px;")  # Small positive margin
+        subtitle_label.setStyleSheet("margin-top: -5px;")  # Negative margin to pull up
         text_layout.addWidget(subtitle_label)
 
         # Date and Time Display
@@ -215,8 +217,8 @@ class AttendanceApp(QtWidgets.QMainWindow):
         datetime_font = QtGui.QFont("Arial", datetime_size)
         self.datetime_label.setFont(datetime_font)
         self.datetime_label.setStyleSheet(
-            "color: #CCCCCC; margin-top: 2px;"
-        )  # Small positive margin
+            "color: #CCCCCC; margin-top: -5px;"
+        )  # Negative margin to pull up
         text_layout.addWidget(self.datetime_label)
 
         # Add the text container to the title layout
