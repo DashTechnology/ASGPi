@@ -107,19 +107,14 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.setCentralWidget(self.central_widget)
         main_layout = QtWidgets.QVBoxLayout(self.central_widget)
 
-        # Set responsive margins (2% of screen width/height)
-        margin = int(min(screen_size.width(), screen_size.height()) * 0.02)
-        main_layout.setContentsMargins(margin, margin, margin, margin)
-        main_layout.setSpacing(int(margin * 0.5))
-
         # Create status circle
         self.status_circle = QtWidgets.QWidget(self)
-        self.status_circle.setFixedSize(80, 80)  # Smaller circle size
+        self.status_circle.setFixedSize(150, 150)  # Increased circle size
         self.status_circle.setStyleSheet(
             """
             QWidget {
                 background-color: rgba(128, 128, 128, 0.5);
-                border-radius: 40px;
+                border-radius: 75px;
                 border: 2px solid rgba(255, 255, 255, 0.2);
             }
             """
@@ -127,19 +122,26 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         # Create breathing animation
         self.breath_animation = QtCore.QPropertyAnimation(self.status_circle, b"size")
-        self.breath_animation.setDuration(2000)
-        self.breath_animation.setLoopCount(-1)
-        self.breath_animation.setStartValue(QtCore.QSize(75, 75))
-        self.breath_animation.setEndValue(QtCore.QSize(80, 80))
+        self.breath_animation.setDuration(2000)  # 2 seconds for one breath cycle
+        self.breath_animation.setLoopCount(-1)  # Infinite loop
+        self.breath_animation.setStartValue(QtCore.QSize(140, 140))
+        self.breath_animation.setEndValue(QtCore.QSize(150, 150))
         self.breath_animation.setEasingCurve(QtCore.QEasingCurve.InOutQuad)
         self.breath_animation.start()
 
-        # Add the status circle to a container
+        # Add the status circle to a container to position it
         circle_container = QtWidgets.QWidget()
-        circle_container.setFixedSize(90, 90)
+        circle_container.setFixedSize(170, 170)  # Slightly larger than the circle
         circle_layout = QtWidgets.QVBoxLayout(circle_container)
         circle_layout.addWidget(self.status_circle, 0, QtCore.Qt.AlignCenter)
         circle_layout.setContentsMargins(5, 5, 5, 5)
+
+        # Set responsive margins (2% of screen width/height)
+        margin = int(min(screen_size.width(), screen_size.height()) * 0.02)
+        main_layout.setContentsMargins(margin, margin, margin, margin)
+        main_layout.setSpacing(
+            int(margin * 0.5)
+        )  # Reduced spacing between main elements
 
         # Create a horizontal layout for the circle and header
         top_container = QtWidgets.QHBoxLayout()
@@ -163,14 +165,35 @@ class AttendanceApp(QtWidgets.QMainWindow):
             """
         )
         header_layout = QtWidgets.QVBoxLayout(header_container)
-        header_layout.setSpacing(5)
+        header_layout.setSpacing(5)  # Reduced spacing between header elements
 
-        # Title Section
+        # Title container with logo
+        title_container = QtWidgets.QWidget()
+        title_layout = QtWidgets.QHBoxLayout(title_container)
+        title_layout.setSpacing(20)  # Space between logo and title
+
+        # Add small ASG logo
+        logo_label = QtWidgets.QLabel(self)
+        logo_size = int(screen_size.height() * 0.08)  # 8% of screen height
+        logo_pixmap = QtGui.QPixmap("assets/ASG.png")
+        scaled_pixmap = logo_pixmap.scaled(
+            logo_size,
+            logo_size,
+            QtCore.Qt.KeepAspectRatio,
+            QtCore.Qt.SmoothTransformation,
+        )
+        logo_label.setPixmap(scaled_pixmap)
+        logo_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        title_layout.addWidget(logo_label)
+
+        # Title text
         title_label = QtWidgets.QLabel("Associated Student Government", self)
         title_label.setAlignment(QtCore.Qt.AlignCenter)
         title_font = QtGui.QFont("Arial", title_size, QtGui.QFont.Bold)
         title_label.setFont(title_font)
-        header_layout.addWidget(title_label)
+        title_layout.addWidget(title_label)
+
+        header_layout.addWidget(title_container)
 
         # Subtitle
         subtitle_label = QtWidgets.QLabel("Los Angeles City College", self)
@@ -192,7 +215,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
         top_container.setStretch(1, 9)  # Header takes 9 parts
         main_layout.addLayout(top_container)
 
-        # Main content area (Logo and Info/Log)
+        # Content container
         content_container = QtWidgets.QWidget()
         content_container.setStyleSheet(
             """
@@ -201,42 +224,9 @@ class AttendanceApp(QtWidgets.QMainWindow):
                 border-radius: 15px;
                 padding: 15px;
             }
-            """
+        """
         )
-        content_layout = QtWidgets.QHBoxLayout(content_container)
-        content_layout.setSpacing(margin)
-
-        # Left side - Logo
-        logo_container = QtWidgets.QFrame()
-        logo_container.setStyleSheet(
-            """
-            QFrame {
-                background: transparent;
-                border-radius: 15px;
-                padding: 10px;
-            }
-            """
-        )
-        logo_layout = QtWidgets.QVBoxLayout(logo_container)
-
-        # Calculate logo size (35% of screen height)
-        logo_size = int(screen_size.height() * 0.35)
-        logo_label = QtWidgets.QLabel(self)
-        logo_pixmap = QtGui.QPixmap("assets/ASG.png")
-        scaled_pixmap = logo_pixmap.scaled(
-            logo_size,
-            logo_size,
-            QtCore.Qt.KeepAspectRatio,
-            QtCore.Qt.SmoothTransformation,
-        )
-        logo_label.setPixmap(scaled_pixmap)
-        logo_label.setAlignment(QtCore.Qt.AlignCenter)
-        logo_layout.addWidget(logo_label)
-        content_layout.addWidget(logo_container)
-
-        # Right side - Info and Log
-        right_panel = QtWidgets.QVBoxLayout()
-        right_panel.setSpacing(int(margin * 0.7))
+        content_layout = QtWidgets.QVBoxLayout(content_container)
 
         # Welcome message
         self.info_label = QtWidgets.QLabel("", self)
@@ -245,13 +235,13 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.info_label.setFont(info_font)
         self.info_label.setStyleSheet("color: white; padding: 10px;")
         self.info_label.setWordWrap(True)
-        right_panel.addWidget(self.info_label)
+        content_layout.addWidget(self.info_label)
 
-        # Log text area with increased size
+        # Log text area
         self.log_text = QtWidgets.QPlainTextEdit(self)
         self.log_text.setReadOnly(True)
         self.log_text.setMaximumBlockCount(100)
-        log_font = QtGui.QFont("Monospace", int(log_size * 1.2))  # Increased font size
+        log_font = QtGui.QFont("Monospace", log_size)
         log_font.setStyleHint(QtGui.QFont.TypeWriter)
         self.log_text.setFont(log_font)
         self.log_text.setStyleSheet(
@@ -263,19 +253,13 @@ class AttendanceApp(QtWidgets.QMainWindow):
                 padding: 15px;
                 color: white;
             }
-            """
+        """
         )
-        # Set height to 45% of screen height (increased from 32%)
-        self.log_text.setMinimumHeight(int(screen_size.height() * 0.45))
-        right_panel.addWidget(self.log_text)
-
-        content_layout.addLayout(right_panel)
-        content_layout.setStretch(0, 4)  # Logo takes 4 parts
-        content_layout.setStretch(1, 6)  # Right panel takes 6 parts
+        content_layout.addWidget(self.log_text)
+        content_layout.setStretch(0, 1)  # Welcome message takes 1 part
+        content_layout.setStretch(1, 9)  # Log text takes 9 parts
 
         main_layout.addWidget(content_container)
-        main_layout.setStretch(0, 2)  # Header section takes 2 parts
-        main_layout.setStretch(1, 8)  # Content section takes 8 parts
 
         # Footer with Dash Tech credit
         footer_container = QtWidgets.QWidget()
@@ -309,6 +293,11 @@ class AttendanceApp(QtWidgets.QMainWindow):
         footer_layout.addWidget(footer_label)
 
         main_layout.addWidget(footer_container)
+
+        # Set layout stretching
+        main_layout.setStretch(0, 2)  # Header takes 2 parts
+        main_layout.setStretch(1, 5)  # Content takes 5 parts (reduced from 6)
+        main_layout.setStretch(2, 0)  # Footer fixed height
 
     def _show_error_and_exit(self, message: str) -> None:
         """
