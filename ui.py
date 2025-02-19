@@ -93,11 +93,11 @@ class AttendanceApp(QtWidgets.QMainWindow):
             screen_size.height() * 0.04
         )  # 4% of screen height (~24 pts for 600px)
         subtitle_size = int(
-            screen_size.height() * 0.025
-        )  # 2.5% of screen height (reduced from 3%)
+            screen_size.height() * 0.03
+        )  # 3% of screen height (increased from 2.5%)
         datetime_size = int(
-            screen_size.height() * 0.018
-        )  # 1.8% of screen height (reduced from 2%)
+            screen_size.height() * 0.022
+        )  # 2.2% of screen height (increased from 1.8%)
         info_size = int(screen_size.height() * 0.03)  # 3% of screen height (~18 pts)
         log_size = int(screen_size.height() * 0.025)  # 2.5% of screen height (~15 pts)
         footer_size = int(screen_size.height() * 0.02)  # 2% of screen height (~12 pts)
@@ -171,12 +171,11 @@ class AttendanceApp(QtWidgets.QMainWindow):
         title_container = QtWidgets.QWidget()
         title_layout = QtWidgets.QHBoxLayout(title_container)
         title_layout.setSpacing(20)  # Space between logo and title
+        title_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
 
-        # Add small ASG logo
+        # Add ASG logo
         logo_label = QtWidgets.QLabel(self)
-        logo_size = int(
-            screen_size.height() * 0.15
-        )  # 15% of screen height (increased from 12%)
+        logo_size = int(screen_size.height() * 0.15)  # 15% of screen height
         logo_pixmap = QtGui.QPixmap("assets/ASG.png")
         scaled_pixmap = logo_pixmap.scaled(
             logo_size,
@@ -186,27 +185,29 @@ class AttendanceApp(QtWidgets.QMainWindow):
         )
         logo_label.setPixmap(scaled_pixmap)
         logo_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        logo_label.setStyleSheet("padding-right: 15px;")  # Reduced padding from 20px
+        logo_label.setStyleSheet("padding-right: 15px;")
         title_layout.addWidget(logo_label)
+
+        # Create a container for title and subtitle
+        text_container = QtWidgets.QWidget()
+        text_layout = QtWidgets.QVBoxLayout(text_container)
+        text_layout.setSpacing(0)  # Minimal spacing between title and subtitle
+        text_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
 
         # Title text
         title_label = QtWidgets.QLabel("Associated Student Government", self)
         title_label.setAlignment(QtCore.Qt.AlignCenter)
         title_font = QtGui.QFont("Arial", title_size, QtGui.QFont.Bold)
         title_label.setFont(title_font)
-        title_layout.addWidget(title_label)
-
-        header_layout.addWidget(title_container)
+        text_layout.addWidget(title_label)
 
         # Subtitle
         subtitle_label = QtWidgets.QLabel("Los Angeles City College", self)
         subtitle_label.setAlignment(QtCore.Qt.AlignCenter)
         subtitle_font = QtGui.QFont("Arial", subtitle_size)
         subtitle_label.setFont(subtitle_font)
-        subtitle_label.setStyleSheet(
-            "margin-top: -5px;"
-        )  # Added negative margin to reduce space
-        header_layout.addWidget(subtitle_label)
+        subtitle_label.setStyleSheet("margin-top: 2px;")  # Small positive margin
+        text_layout.addWidget(subtitle_label)
 
         # Date and Time Display
         self.datetime_label = QtWidgets.QLabel("", self)
@@ -214,9 +215,13 @@ class AttendanceApp(QtWidgets.QMainWindow):
         datetime_font = QtGui.QFont("Arial", datetime_size)
         self.datetime_label.setFont(datetime_font)
         self.datetime_label.setStyleSheet(
-            "color: #CCCCCC; margin-top: -5px;"
-        )  # Added negative margin
-        header_layout.addWidget(self.datetime_label)
+            "color: #CCCCCC; margin-top: 2px;"
+        )  # Small positive margin
+        text_layout.addWidget(self.datetime_label)
+
+        # Add the text container to the title layout
+        title_layout.addWidget(text_container)
+        header_layout.addWidget(title_container)
 
         top_container.addWidget(header_container)
         top_container.setStretch(0, 1)  # Circle takes 1 part
