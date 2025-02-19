@@ -93,11 +93,11 @@ class AttendanceApp(QtWidgets.QMainWindow):
             screen_size.height() * 0.04
         )  # 4% of screen height (~24 pts for 600px)
         subtitle_size = int(
-            screen_size.height() * 0.03
-        )  # 3% of screen height (~18 pts)
+            screen_size.height() * 0.025
+        )  # 2.5% of screen height (reduced from 3%)
         datetime_size = int(
-            screen_size.height() * 0.02
-        )  # 2% of screen height (~12 pts)
+            screen_size.height() * 0.018
+        )  # 1.8% of screen height (reduced from 2%)
         info_size = int(screen_size.height() * 0.03)  # 3% of screen height (~18 pts)
         log_size = int(screen_size.height() * 0.025)  # 2.5% of screen height (~15 pts)
         footer_size = int(screen_size.height() * 0.02)  # 2% of screen height (~12 pts)
@@ -165,7 +165,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
             """
         )
         header_layout = QtWidgets.QVBoxLayout(header_container)
-        header_layout.setSpacing(5)  # Reduced spacing between header elements
+        header_layout.setSpacing(2)  # Reduced spacing between header elements from 5
 
         # Title container with logo
         title_container = QtWidgets.QWidget()
@@ -174,7 +174,9 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         # Add small ASG logo
         logo_label = QtWidgets.QLabel(self)
-        logo_size = int(screen_size.height() * 0.12)  # 12% of screen height
+        logo_size = int(
+            screen_size.height() * 0.15
+        )  # 15% of screen height (increased from 12%)
         logo_pixmap = QtGui.QPixmap("assets/ASG.png")
         scaled_pixmap = logo_pixmap.scaled(
             logo_size,
@@ -184,9 +186,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
         )
         logo_label.setPixmap(scaled_pixmap)
         logo_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        logo_label.setStyleSheet(
-            "padding-right: 20px;"
-        )  # Add some padding to the right of the logo
+        logo_label.setStyleSheet("padding-right: 15px;")  # Reduced padding from 20px
         title_layout.addWidget(logo_label)
 
         # Title text
@@ -203,6 +203,9 @@ class AttendanceApp(QtWidgets.QMainWindow):
         subtitle_label.setAlignment(QtCore.Qt.AlignCenter)
         subtitle_font = QtGui.QFont("Arial", subtitle_size)
         subtitle_label.setFont(subtitle_font)
+        subtitle_label.setStyleSheet(
+            "margin-top: -5px;"
+        )  # Added negative margin to reduce space
         header_layout.addWidget(subtitle_label)
 
         # Date and Time Display
@@ -210,7 +213,9 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.datetime_label.setAlignment(QtCore.Qt.AlignCenter)
         datetime_font = QtGui.QFont("Arial", datetime_size)
         self.datetime_label.setFont(datetime_font)
-        self.datetime_label.setStyleSheet("color: #CCCCCC;")
+        self.datetime_label.setStyleSheet(
+            "color: #CCCCCC; margin-top: -5px;"
+        )  # Added negative margin
         header_layout.addWidget(self.datetime_label)
 
         top_container.addWidget(header_container)
