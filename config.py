@@ -11,15 +11,15 @@ DB_PATH: str = "attendance.db"
 USER_MAPPING: Dict[str, str] = {"123456": "Alice", "654321": "Bob"}
 
 # Time settings
-AUTO_SIGNOUT_HOUR: int = 19  # 7:00 PM
-SLEEP_TIME_HOUR: int = 19
-SLEEP_TIME_MINUTE: int = 30  # 7:30 PM
+AUTO_SIGNOUT_HOUR: int = 20  # 9:00 PM
+SLEEP_TIME_HOUR: int = 20
+SLEEP_TIME_MINUTE: int = 0  # 9:00 PM
 WAKE_TIME_HOUR: int = 8  # 8:00 AM
 WAKE_TIME_MINUTE: int = 0
 
 # Sign-in start time
 START_TIME_HOUR: int = 7  # 7:00 AM
-START_TIME_MINUTE: int = 30  # 7:30 AM
+START_TIME_MINUTE: int = 0  # 7:00 AM
 
 DEFAULT_DURATION_HOURS: float = 1.0  # Duration assigned for auto sign-out
 
@@ -29,7 +29,7 @@ WINDOW_GEOMETRY: tuple[int, int, int, int] = (
     100,
     100,
     1024,
-    768,
+    600,
 )  # x, y, width, height
 AUTO_SIGNOUT_CHECK_INTERVAL: int = 60000  # milliseconds (1 minute)
 

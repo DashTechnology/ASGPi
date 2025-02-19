@@ -36,6 +36,8 @@ class AttendanceApp(QtWidgets.QMainWindow):
         # Set window to full screen
         self.showFullScreen()
         self.setStyleSheet("background-color: black; color: white;")
+        # Hide the mouse cursor
+        self.setCursor(QtCore.Qt.BlankCursor)
 
         # Track system state
         self.is_sleeping = False
@@ -86,12 +88,18 @@ class AttendanceApp(QtWidgets.QMainWindow):
         screen_size = screen.size()
 
         # Calculate base font sizes based on screen height
-        title_size = int(screen_size.height() * 0.05)  # 5% of screen height
-        subtitle_size = int(screen_size.height() * 0.035)  # 3.5% of screen height
-        datetime_size = int(screen_size.height() * 0.025)  # 2.5% of screen height
-        info_size = int(screen_size.height() * 0.035)  # 3.5% of screen height
-        log_size = int(screen_size.height() * 0.02)  # 2% of screen height
-        footer_size = int(screen_size.height() * 0.015)  # 1.5% of screen height
+        title_size = int(
+            screen_size.height() * 0.04
+        )  # 4% of screen height (~24 pts for 600px)
+        subtitle_size = int(
+            screen_size.height() * 0.03
+        )  # 3% of screen height (~18 pts)
+        datetime_size = int(
+            screen_size.height() * 0.02
+        )  # 2% of screen height (~12 pts)
+        info_size = int(screen_size.height() * 0.03)  # 3% of screen height (~18 pts)
+        log_size = int(screen_size.height() * 0.015)  # 1.5% of screen height (~9 pts)
+        footer_size = int(screen_size.height() * 0.02)  # 2% of screen height (~12 pts)
 
         # Create central widget and layout
         self.central_widget = QtWidgets.QWidget(self)
@@ -101,7 +109,9 @@ class AttendanceApp(QtWidgets.QMainWindow):
         # Set responsive margins (2% of screen width/height)
         margin = int(min(screen_size.width(), screen_size.height()) * 0.02)
         main_layout.setContentsMargins(margin, margin, margin, margin)
-        main_layout.setSpacing(margin)
+        main_layout.setSpacing(
+            int(margin * 0.5)
+        )  # Reduced spacing between main elements
 
         # Header container with gradient background
         header_container = QtWidgets.QWidget()
@@ -114,11 +124,12 @@ class AttendanceApp(QtWidgets.QMainWindow):
                     stop: 1 rgba(0, 0, 0, 0.3)
                 );
                 border-radius: 15px;
-                padding: 20px;
+                padding: 10px;
             }
         """
         )
         header_layout = QtWidgets.QVBoxLayout(header_container)
+        header_layout.setSpacing(5)  # Reduced spacing between header elements
 
         # Title Section
         title_label = QtWidgets.QLabel("Associated Student Government", self)
@@ -151,7 +162,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
             QWidget {
                 background: rgba(255, 255, 255, 0.05);
                 border-radius: 15px;
-                padding: 20px;
+                padding: 15px;
             }
         """
         )
@@ -188,7 +199,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         # Right panel container
         right_panel = QtWidgets.QVBoxLayout()
-        right_panel.setSpacing(margin)
+        right_panel.setSpacing(int(margin * 0.7))  # Reduced spacing in right panel
 
         # Welcome message
         self.info_label = QtWidgets.QLabel("", self)
@@ -218,7 +229,11 @@ class AttendanceApp(QtWidgets.QMainWindow):
         """
         )
         # Set height to 40% of screen height
-        self.log_text.setMinimumHeight(int(screen_size.height() * 0.4))
+        self.log_text.setMinimumHeight(
+            int(
+                screen_size.height() * 0.32
+            )  # Reduced to 32% to make more room for footer
+        )  # Reduced to 35% to make room for footer
         right_panel.addWidget(self.log_text)
 
         content_layout.addLayout(right_panel)
@@ -232,24 +247,27 @@ class AttendanceApp(QtWidgets.QMainWindow):
         footer_container.setStyleSheet(
             """
             QWidget {
-                background: transparent;
-                padding: 5px;
+                background: rgba(0, 0, 0, 0.3);
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                margin: 5px 0px 2px 0px;
             }
-        """
+            """
         )
+        footer_container.setFixedHeight(25)  # Even smaller height
         footer_layout = QtWidgets.QHBoxLayout(footer_container)
-        footer_layout.setAlignment(QtCore.Qt.AlignRight)
+        footer_layout.setContentsMargins(10, 0, 10, 0)
+        footer_layout.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         footer_label = QtWidgets.QLabel("powered by Dash Technology", self)
-        footer_font = QtGui.QFont("Arial", footer_size)
+        footer_font = QtGui.QFont("Arial", 11)  # Even smaller font size
         footer_font.setItalic(True)
         footer_label.setFont(footer_font)
         footer_label.setStyleSheet(
             """
-            color: rgba(255, 255, 255, 0.5);
-            padding: 10px;
-        """
+            color: rgba(255, 255, 255, 0.8);
+            """
         )
+
         # Make the label clickable
         footer_label.setCursor(QtCore.Qt.PointingHandCursor)
         footer_label.mousePressEvent = self.show_registration_window
@@ -259,8 +277,8 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         # Set layout stretching
         main_layout.setStretch(0, 2)  # Header takes 2 parts
-        main_layout.setStretch(1, 7)  # Content takes 7 parts
-        main_layout.setStretch(2, 1)  # Footer takes 1 part
+        main_layout.setStretch(1, 5)  # Content takes 5 parts (reduced from 6)
+        main_layout.setStretch(2, 0)  # Footer fixed height
 
     def _show_error_and_exit(self, message: str) -> None:
         """
@@ -438,9 +456,9 @@ class AttendanceApp(QtWidgets.QMainWindow):
         @param error: Flag to indicate error (displays in red if True).
         """
         style = (
-            "color: red; font-size: 24pt;"
+            "color: red; font-size: 16pt;"
             if error
-            else "color: white; font-size: 24pt;"
+            else "color: white; font-size: 16pt;"
         )
         self.info_label.setStyleSheet(style)
         self.info_label.setText(message)
