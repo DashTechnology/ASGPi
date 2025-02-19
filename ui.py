@@ -294,21 +294,26 @@ class AttendanceApp(QtWidgets.QMainWindow):
             }
             """
         )
-        footer_container.setFixedHeight(25)  # Even smaller height
+        footer_container.setFixedHeight(
+            35
+        )  # Increased height for better button visibility
         footer_layout = QtWidgets.QHBoxLayout(footer_container)
-        footer_layout.setContentsMargins(10, 0, 10, 0)
+        footer_layout.setContentsMargins(10, 5, 10, 5)  # Added vertical padding
 
         # Add Check Hours button
         check_hours_btn = QtWidgets.QPushButton("Check Hours", self)
         check_hours_btn.setFont(QtGui.QFont("Arial", 11))
+        check_hours_btn.setFixedWidth(120)  # Fixed width to prevent squishing
+        check_hours_btn.setFixedHeight(25)  # Fixed height for better proportions
         check_hours_btn.setStyleSheet(
             """
             QPushButton {
                 background-color: rgba(255, 255, 255, 0.1);
                 border: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 5px;
-                padding: 5px 15px;
+                padding: 2px 10px;
                 color: white;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: rgba(255, 255, 255, 0.2);
@@ -553,7 +558,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
         """Updates the date and time display in the info label when no message is shown."""
         current_datetime = datetime.now()
         formatted_datetime = current_datetime.strftime("%B %d, %Y %I:%M:%S %p")
-        self.info_label.setText(f"Current Time: {formatted_datetime}")
+        self.info_label.setText(f"{formatted_datetime}")
         self.info_label.setStyleSheet("color: #CCCCCC; font-size: 16pt;")
 
     def show_message(self, message: str, error: bool = False) -> None:
