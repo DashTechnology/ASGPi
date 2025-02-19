@@ -42,6 +42,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
         # Track system state
         self.is_sleeping = False
         self.central_widget = None
+        self.is_processing_tap = False
         self.setup_ui()
 
         try:
@@ -106,12 +107,46 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.setCentralWidget(self.central_widget)
         main_layout = QtWidgets.QVBoxLayout(self.central_widget)
 
+        # Create status circle
+        self.status_circle = QtWidgets.QWidget(self)
+        self.status_circle.setFixedSize(100, 100)  # Fixed size for the circle
+        self.status_circle.setStyleSheet(
+            """
+            QWidget {
+                background-color: rgba(128, 128, 128, 0.5);
+                border-radius: 50px;
+            }
+            """
+        )
+
+        # Create breathing animation
+        self.breath_animation = QtCore.QPropertyAnimation(self.status_circle, b"size")
+        self.breath_animation.setDuration(2000)  # 2 seconds for one breath cycle
+        self.breath_animation.setLoopCount(-1)  # Infinite loop
+        self.breath_animation.setStartValue(QtCore.QSize(90, 90))
+        self.breath_animation.setEndValue(QtCore.QSize(100, 100))
+        self.breath_animation.setEasingCurve(QtCore.QEasingCurve.InOutQuad)
+        self.breath_animation.start()
+
+        # Add the status circle to a container to position it
+        circle_container = QtWidgets.QWidget()
+        circle_container.setFixedSize(120, 120)  # Slightly larger than the circle
+        circle_layout = QtWidgets.QVBoxLayout(circle_container)
+        circle_layout.addWidget(self.status_circle, 0, QtCore.Qt.AlignCenter)
+        circle_layout.setContentsMargins(10, 10, 10, 10)
+
         # Set responsive margins (2% of screen width/height)
         margin = int(min(screen_size.width(), screen_size.height()) * 0.02)
         main_layout.setContentsMargins(margin, margin, margin, margin)
         main_layout.setSpacing(
             int(margin * 0.5)
         )  # Reduced spacing between main elements
+
+        # Create a horizontal layout for the circle and header
+        top_container = QtWidgets.QHBoxLayout()
+        top_container.addWidget(
+            circle_container, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop
+        )
 
         # Header container with gradient background
         header_container = QtWidgets.QWidget()
@@ -126,34 +161,15 @@ class AttendanceApp(QtWidgets.QMainWindow):
                 border-radius: 15px;
                 padding: 10px;
             }
-        """
+            """
         )
         header_layout = QtWidgets.QVBoxLayout(header_container)
         header_layout.setSpacing(5)  # Reduced spacing between header elements
 
-        # Title Section
-        title_label = QtWidgets.QLabel("Associated Student Government", self)
-        title_label.setAlignment(QtCore.Qt.AlignCenter)
-        title_font = QtGui.QFont("Arial", title_size, QtGui.QFont.Bold)
-        title_label.setFont(title_font)
-        header_layout.addWidget(title_label)
-
-        # Subtitle
-        subtitle_label = QtWidgets.QLabel("Los Angeles City College", self)
-        subtitle_label.setAlignment(QtCore.Qt.AlignCenter)
-        subtitle_font = QtGui.QFont("Arial", subtitle_size)
-        subtitle_label.setFont(subtitle_font)
-        header_layout.addWidget(subtitle_label)
-
-        # Date and Time Display
-        self.datetime_label = QtWidgets.QLabel("", self)
-        self.datetime_label.setAlignment(QtCore.Qt.AlignCenter)
-        datetime_font = QtGui.QFont("Arial", datetime_size)
-        self.datetime_label.setFont(datetime_font)
-        self.datetime_label.setStyleSheet("color: #CCCCCC;")
-        header_layout.addWidget(self.datetime_label)
-
-        main_layout.addWidget(header_container)
+        top_container.addWidget(header_container)
+        top_container.setStretch(0, 1)  # Circle takes 1 part
+        top_container.setStretch(1, 9)  # Header takes 9 parts
+        main_layout.addLayout(top_container)
 
         # Content container
         content_container = QtWidgets.QWidget()
@@ -299,6 +315,31 @@ class AttendanceApp(QtWidgets.QMainWindow):
         if card_id:  # Only emit if card_id is valid
             self.card_detected.emit(card_id)
 
+    def set_circle_color(self, color: str) -> None:
+        """
+        Sets the status circle color.
+
+        @param color: Color to set the circle to (e.g., 'grey', 'green', 'red')
+        """
+        color_map = {
+            "grey": "rgba(128, 128, 128, 0.5)",
+            "green": "rgba(0, 255, 0, 0.5)",
+            "red": "rgba(255, 0, 0, 0.5)",
+        }
+        self.status_circle.setStyleSheet(
+            f"""
+            QWidget {{
+                background-color: {color_map.get(color, color_map['grey'])};
+                border-radius: 50px;
+            }}
+            """
+        )
+
+    def reset_circle_color(self) -> None:
+        """Resets the status circle color to grey after delay."""
+        self.set_circle_color("grey")
+        self.is_processing_tap = False
+
     def handle_tap(self, rfid_tag: str) -> None:
         """
         Handles a tap event from the RFID reader.
@@ -306,11 +347,18 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         @param rfid_tag: The RFID card identifier
         """
+        if self.is_processing_tap:
+            return  # Ignore taps while processing
+
+        self.is_processing_tap = True
+
         if self.is_sleeping:
             return  # Ignore card taps while system is sleeping
 
         if not rfid_tag:
             self.show_message("Error: Invalid card read.", error=True)
+            self.set_circle_color("red")
+            QtCore.QTimer.singleShot(5000, self.reset_circle_color)
             return
 
         try:
@@ -318,6 +366,8 @@ class AttendanceApp(QtWidgets.QMainWindow):
             member = self.db_manager.get_member_by_rfid(rfid_tag)
             if not member:
                 self.show_message("Error: Unknown RFID card.", error=True)
+                self.set_circle_color("red")
+                QtCore.QTimer.singleShot(5000, self.reset_circle_color)
                 return
 
             # Get member's position information
@@ -337,21 +387,27 @@ class AttendanceApp(QtWidgets.QMainWindow):
                             self.show_message(
                                 "Sign-in not allowed after 7:00 PM", error=True
                             )
+                            self.set_circle_color("red")
+                            QtCore.QTimer.singleShot(5000, self.reset_circle_color)
                             return
                         elif log_entry.get("error") == "before_hours":
                             self.show_message(
                                 "Sign-in not allowed before 7:30 AM", error=True
                             )
+                            self.set_circle_color("red")
+                            QtCore.QTimer.singleShot(5000, self.reset_circle_color)
                             return
                     self.show_message(
                         f"Welcome {first_name}! Signed in at {current_time}"
                     )
+                    self.set_circle_color("green")
                     self.append_log(
                         f"Sign in recorded for {elected_name} ({position_name}).",
                         is_sign_in=True,
                     )
                 else:
                     self.show_message("Error recording sign in.", error=True)
+                    self.set_circle_color("red")
             else:
                 # Active session exists; record sign out
                 duration = self.db_manager.sign_out(rfid_tag)
@@ -359,6 +415,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
                     self.show_message(
                         f"Good bye, {first_name}! Signed out at {current_time}"
                     )
+                    self.set_circle_color("red")
                     self.append_log(
                         f"Sign out recorded for {elected_name} ({position_name}). "
                         f"Duration: {duration:.2f} hours.",
@@ -366,8 +423,15 @@ class AttendanceApp(QtWidgets.QMainWindow):
                     )
                 else:
                     self.show_message("Error recording sign out.", error=True)
+                    self.set_circle_color("red")
+
+            # Reset circle color after 5 seconds
+            QtCore.QTimer.singleShot(5000, self.reset_circle_color)
+
         except Exception as e:
             self.show_message(f"Error processing card: {str(e)}", error=True)
+            self.set_circle_color("red")
+            QtCore.QTimer.singleShot(5000, self.reset_circle_color)
 
     def check_system_state(self) -> None:
         """
