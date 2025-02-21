@@ -44,6 +44,10 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.central_widget = None
         self.is_processing_tap = False
         self.is_showing_message = False  # Track if we're showing a message
+        self.last_auto_signout_date = None  # Track the date of last auto sign-out
+        self.auto_signout_attempted = (
+            False  # Track if auto sign-out was attempted this hour
+        )
         self.setup_ui()
 
         try:
@@ -57,7 +61,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
         # Timer for checking auto sign out and sleep/wake state
         self.state_timer = QtCore.QTimer(self)
         self.state_timer.timeout.connect(self.check_system_state)
-        self.state_timer.start(60000)  # Check every minute
+        self.state_timer.start(30000)  # Check every 30 seconds for more accuracy
 
         # Timer for updating date/time display
         self.datetime_timer = QtCore.QTimer(self)
@@ -324,6 +328,30 @@ class AttendanceApp(QtWidgets.QMainWindow):
         check_hours_btn.clicked.connect(self.show_check_hours_window)
         footer_layout.addWidget(check_hours_btn)
 
+        # Add Upload Logs button
+        upload_logs_btn = QtWidgets.QPushButton("Upload Logs", self)
+        upload_logs_btn.setFont(QtGui.QFont("Arial", 11))
+        upload_logs_btn.setFixedWidth(120)  # Fixed width to prevent squishing
+        upload_logs_btn.setFixedHeight(25)  # Fixed height for better proportions
+        upload_logs_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 5px;
+                padding: 2px 10px;
+                color: white;
+                font-weight: bold;
+                margin-left: 10px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+            """
+        )
+        upload_logs_btn.clicked.connect(self.upload_logs)
+        footer_layout.addWidget(upload_logs_btn)
+
         # Add spacer to push Dash Tech credit to the right
         footer_layout.addStretch()
 
@@ -502,11 +530,17 @@ class AttendanceApp(QtWidgets.QMainWindow):
     def check_system_state(self) -> None:
         """
         Checks if it's time to sleep or wake up the system.
-        Also handles auto sign out.
+        Also handles auto sign out at the configured time.
         """
         current_time = datetime.now()
         current_hour = current_time.hour
         current_minute = current_time.minute
+        current_date = current_time.date()
+
+        # Reset auto sign-out attempt flag at the start of each hour
+        if current_minute == 0 and self.auto_signout_attempted:
+            self.auto_signout_attempted = False
+            self.append_log("Reset auto sign-out attempt flag for new hour")
 
         # Check if it's before start time (7:30 AM) or after sleep time (7:30 PM)
         if not config.DEV_MODE and (
@@ -529,11 +563,41 @@ class AttendanceApp(QtWidgets.QMainWindow):
             if self.is_sleeping:
                 self.wake_system()
 
-        # Check for auto sign out (only when awake)
-        if not self.is_sleeping and current_hour >= config.AUTO_SIGNOUT_HOUR:
+        # Check for auto sign out (only when awake and at exactly the configured hour)
+        if (
+            not self.is_sleeping
+            and current_hour == config.AUTO_SIGNOUT_HOUR
+            and current_minute == 0
+            and not self.auto_signout_attempted
+            and (
+                self.last_auto_signout_date is None
+                or self.last_auto_signout_date != current_date
+            )
+        ):
+            self.append_log(
+                f"Attempting auto sign-out at {current_time.strftime('%I:%M %p')}"
+            )
+            self.auto_signout_attempted = True
+
             result = self.db_manager.auto_sign_out()
-            if result and result.get("message"):
-                self.append_log(result["message"], is_sign_out=True)
+            if result:
+                if result.get("members"):
+                    members_list = ", ".join(result["members"])
+                    self.append_log(
+                        f"Auto sign-out successful for: {members_list}",
+                        is_sign_out=True,
+                    )
+                else:
+                    self.append_log(
+                        "Auto sign-out completed - no active sessions found"
+                    )
+
+                self.last_auto_signout_date = current_date
+            else:
+                self.append_log(
+                    "Auto sign-out attempt failed or no members to sign out",
+                    is_sign_out=True,
+                )
 
     def sleep_system(self) -> None:
         """Puts the system to sleep."""
@@ -712,6 +776,31 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
         except Exception as e:
             self._show_error_and_exit(f"Error opening check hours window: {str(e)}")
+
+    def upload_logs(self) -> None:
+        """
+        Uploads the current system logs to the database.
+        Shows a success or error message based on the upload result.
+        """
+        try:
+            # Get the current logs from the text area
+            logs = self.log_text.toPlainText()
+
+            if not logs.strip():
+                self.show_message("No logs to upload.", error=True)
+                return
+
+            # Upload the logs to the database
+            success = self.db_manager.upload_system_logs(logs)
+
+            if success:
+                self.show_message("Logs uploaded successfully!")
+                self.append_log("System logs were uploaded to the database.")
+            else:
+                self.show_message("Failed to upload logs.", error=True)
+
+        except Exception as e:
+            self.show_message(f"Error uploading logs: {str(e)}", error=True)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """

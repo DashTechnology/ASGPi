@@ -300,6 +300,27 @@ class DatabaseManager:
             print(f"Error during auto sign out: {error}")
             return None
 
+    def upload_system_logs(self, logs: str) -> bool:
+        """
+        Uploads system logs to the system_logs table.
+
+        @param logs: The system logs as a string
+        @return: True if successful, False otherwise
+        """
+        try:
+            # Convert logs to a JSON object with timestamp
+            log_data = {
+                "log": logs,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            # Insert the log data into the system_logs table
+            response = self.supabase.table("system_logs").insert(log_data).execute()
+            return bool(response.data)
+        except Exception as error:
+            print(f"Error uploading system logs: {error}")
+            return False
+
 
 if __name__ == "__main__":
     # Example test execution: Initialize DatabaseManager and print unique positions.
