@@ -531,36 +531,54 @@ class AttendanceApp(QtWidgets.QMainWindow):
         """
         Checks if it's time to sleep or wake up the system.
         Also handles auto sign out at the configured time.
+        System sleeps during weekends (Saturday and Sunday).
         """
         current_time = datetime.now()
         current_hour = current_time.hour
         current_minute = current_time.minute
         current_date = current_time.date()
+        current_weekday = current_time.weekday()  # Monday is 0, Sunday is 6
 
         # Reset auto sign-out attempt flag at the start of each hour
         if current_minute == 0 and self.auto_signout_attempted:
             self.auto_signout_attempted = False
             self.append_log("Reset auto sign-out attempt flag for new hour")
 
-        # Check if it's before start time (7:30 AM) or after sleep time (7:30 PM)
-        if not config.DEV_MODE and (
-            (
-                current_hour < config.START_TIME_HOUR
-                or (
-                    current_hour == config.START_TIME_HOUR
-                    and current_minute < config.START_TIME_MINUTE
+        # Check if it's a weekend (Saturday = 5, Sunday = 6)
+        is_weekend = current_weekday in (5, 6)
+
+        # Check if system should sleep
+        should_sleep = False
+        if not config.DEV_MODE:
+            if is_weekend:
+                should_sleep = True
+                if not self.is_sleeping:
+                    self.append_log("System entering weekend sleep mode.")
+            else:
+                # Regular weekday sleep check
+                should_sleep = (
+                    (
+                        current_hour < config.START_TIME_HOUR
+                        or (
+                            current_hour == config.START_TIME_HOUR
+                            and current_minute < config.START_TIME_MINUTE
+                        )
+                    )
+                    or (
+                        current_hour == config.SLEEP_TIME_HOUR
+                        and current_minute >= config.SLEEP_TIME_MINUTE
+                    )
+                    or current_hour > config.SLEEP_TIME_HOUR
                 )
-            )
-            or (
-                current_hour == config.SLEEP_TIME_HOUR
-                and current_minute >= config.SLEEP_TIME_MINUTE
-            )
-            or current_hour > config.SLEEP_TIME_HOUR
-        ):
+
+        # Apply sleep state
+        if should_sleep:
             if not self.is_sleeping:
                 self.sleep_system()
         else:
             if self.is_sleeping:
+                if is_weekend:
+                    self.append_log("System resuming operation after weekend.")
                 self.wake_system()
 
         # Check for auto sign out (only when awake and at exactly the configured hour)
@@ -779,7 +797,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
 
     def upload_logs(self) -> None:
         """
-        Uploads the current system logs to the database.
+        Uploads the current system logs to the database and clears the log display.
         Shows a success or error message based on the upload result.
         """
         try:
@@ -794,8 +812,12 @@ class AttendanceApp(QtWidgets.QMainWindow):
             success = self.db_manager.upload_system_logs(logs)
 
             if success:
+                # Clear the log text area
+                self.log_text.clear()
                 self.show_message("Logs uploaded successfully!")
-                self.append_log("System logs were uploaded to the database.")
+                self.append_log(
+                    "System logs were uploaded to the database and cleared."
+                )
             else:
                 self.show_message("Failed to upload logs.", error=True)
 

@@ -11,9 +11,9 @@ DB_PATH: str = "attendance.db"
 USER_MAPPING: Dict[str, str] = {"123456": "Alice", "654321": "Bob"}
 
 # Time settings
-AUTO_SIGNOUT_HOUR: int = 20  # 9:00 PM
+AUTO_SIGNOUT_HOUR: int = 20  # 8:00 PM
 SLEEP_TIME_HOUR: int = 20
-SLEEP_TIME_MINUTE: int = 0  # 9:00 PM
+SLEEP_TIME_MINUTE: int = 0  # 8:00 PM
 WAKE_TIME_HOUR: int = 8  # 8:00 AM
 WAKE_TIME_MINUTE: int = 0
 
