@@ -611,6 +611,20 @@ class AttendanceApp(QtWidgets.QMainWindow):
                     )
 
                 self.last_auto_signout_date = current_date
+
+                # Upload system logs after auto sign-out
+                logs = self.log_text.toPlainText()
+                if logs.strip():
+                    if self.db_manager.upload_system_logs(logs):
+                        self.log_text.clear()
+                        self.append_log(
+                            "System logs were automatically uploaded after auto sign-out."
+                        )
+                    else:
+                        self.append_log(
+                            "Failed to upload system logs after auto sign-out.",
+                            error=True,
+                        )
             else:
                 self.append_log(
                     "Auto sign-out attempt failed or no members to sign out",
