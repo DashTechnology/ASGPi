@@ -236,19 +236,30 @@ class CheckHoursWindow(QtWidgets.QDialog):
                 self.info_label.setText(f"No hours recorded for {member['name']}")
                 return
 
-            # Calculate total hours
+            # Calculate total hours and current week hours
             total_hours = 0.0
+            current_week_hours = 0.0
+
+            # Get the start of the current week (Monday)
+            current_date = datetime.now()
+            start_of_week = current_date - QtCore.timedelta(days=current_date.weekday())
+            start_of_week = start_of_week.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+
             for session in response.data:
-                if session.get("duration"):
-                    total_hours += float(session["duration"])
+                duration = float(session.get("duration", 0))
+                total_hours += duration
 
-            # Format the display message
-            message_parts = []
-            message_parts.append(f"Member: {member['name']} ({member['position']})")
-            message_parts.append(f"Total Hours: {total_hours:.2f}")
+                # Check if the session is from the current week
+                session_date = datetime.fromisoformat(
+                    session["sign_in_time"].replace("Z", "+00:00")
+                )
+                if session_date >= start_of_week:
+                    current_week_hours += duration
 
+            # Add current active session duration to both totals if exists
             if active_session:
-                # Calculate current session duration
                 sign_in_time = datetime.fromisoformat(
                     active_session["sign_in_time"].replace("Z", "+00:00")
                 )
@@ -257,6 +268,17 @@ class CheckHoursWindow(QtWidgets.QDialog):
                     current_time - sign_in_time
                 ).total_seconds() / 3600.0
 
+                total_hours += current_duration
+                if sign_in_time >= start_of_week:
+                    current_week_hours += current_duration
+
+            # Format the display message
+            message_parts = []
+            message_parts.append(f"Member: {member['name']} ({member['position']})")
+            message_parts.append(f"Total Hours: {total_hours:.2f}")
+            message_parts.append(f"Current Week Hours: {current_week_hours:.2f}")
+
+            if active_session:
                 message_parts.append("\nCurrent Session:")
                 message_parts.append(
                     f"Signed in at: {sign_in_time.strftime('%I:%M %p')}"
