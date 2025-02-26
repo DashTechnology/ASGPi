@@ -6,8 +6,9 @@ Provides functionality to send tap in/out notifications to a Discord channel.
 
 import json
 from datetime import datetime
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, List
 import requests
+import random
 
 
 class DiscordWebhook:
@@ -16,6 +17,23 @@ class DiscordWebhook:
     Manages tap in/out event notifications with proper formatting.
     """
 
+    # Collection of meme GIFs for special members
+    PRESIDENT_MEMES: List[str] = [
+        "https://media.giphy.com/media/3o7TKF1fSIs1R19B8k/giphy.gif",  # Cool entrance
+        "https://media.giphy.com/media/l0IykG0AM7911MrCM/giphy.gif",  # Boss entrance
+        "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",  # Like a boss
+        "https://media.giphy.com/media/l46C93LNM33JJ1SMw/giphy.gif",  # Epic entrance
+        "https://media.giphy.com/media/xT0BKqxuUDfosKEXXG/giphy.gif",  # Cool guy
+    ]
+
+    YAPPER_MEMES: List[str] = [
+        "https://media.giphy.com/media/l0HlMWkHJKvNv6B8Y/giphy.gif",  # Funny entrance
+        "https://media.giphy.com/media/26n6R5HOYPbekK0YE/giphy.gif",  # Happy dance
+        "https://media.giphy.com/media/26tP24Yd1GznbcXkI/giphy.gif",  # Cool moves
+        "https://media.giphy.com/media/26gsjCZpPolPr3sBy/giphy.gif",  # Fun vibes
+        "https://media.giphy.com/media/26ufq9mryvc5HI27m/giphy.gif",  # Party time
+    ]
+
     def __init__(self, webhook_url: str) -> None:
         """
         Initialize the Discord webhook handler.
@@ -23,6 +41,29 @@ class DiscordWebhook:
         @param webhook_url: The Discord webhook URL to send notifications to
         """
         self.webhook_url = webhook_url
+
+    def _get_special_member_info(
+        self, member_name: str
+    ) -> Optional[Dict[str, Union[str, List[str]]]]:
+        """
+        Get special formatting for specific members.
+
+        @param member_name: Name of the member
+        @return: Dictionary with special member info if applicable, None otherwise
+        """
+        if "Movses" in member_name:
+            return {
+                "display_name": "President Movies",
+                "memes": self.PRESIDENT_MEMES,
+                "title_emoji": "👑",
+            }
+        elif "Moises" in member_name:
+            return {
+                "display_name": "President Movies second Son / Yapper",
+                "memes": self.YAPPER_MEMES,
+                "title_emoji": "🎭",
+            }
+        return None
 
     def send_tap_notification(
         self,
@@ -48,9 +89,20 @@ class DiscordWebhook:
             # Create the embed for the notification
             current_time = datetime.now().strftime("%I:%M %p")
 
+            # Check for special member handling
+            special_member = self._get_special_member_info(member_name)
+            if special_member:
+                display_name = special_member["display_name"]
+                title_emoji = special_member["title_emoji"]
+                random_meme = random.choice(special_member["memes"])
+            else:
+                display_name = member_name
+                title_emoji = "🎯"
+                random_meme = None
+
             embed: Dict[str, Union[str, int]] = {
-                "title": f"Member Tap {event_type.title()}",
-                "description": f"**{member_name}** ({position})",
+                "title": f"{title_emoji} Member Tap {event_type.title()} {title_emoji}",
+                "description": f"**{display_name}** ({position})",
                 "color": (
                     0x00FF00 if event_type == "in" else 0xFF0000
                 ),  # Green for in, Red for out
@@ -66,6 +118,10 @@ class DiscordWebhook:
                 embed["fields"].append(
                     {"name": "Duration", "value": duration_str, "inline": True}
                 )
+
+            # Add meme GIF for special members
+            if random_meme:
+                embed["image"] = {"url": random_meme}
 
             # Prepare the webhook payload
             payload = {"embeds": [embed]}
