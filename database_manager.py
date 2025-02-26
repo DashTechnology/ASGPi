@@ -12,7 +12,6 @@ from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import config
-from pytz import timezone
 
 # Load environment variables from .env file
 load_dotenv()
@@ -239,56 +238,67 @@ class DatabaseManager:
             print(f"Error during sign out: {error}")
             return None
 
-    def auto_sign_out(self) -> dict:
+    def auto_sign_out(self) -> None:
         """
         Automatically signs out all active members.
-        Returns dict with message and list of signed out members.
+        Intended to be executed at a scheduled time (e.g., 7:00 pm).
+        Sets duration to 0 if sign-in time is less than an hour ago.
         """
         try:
+            # Retrieve all members currently in the office.
             response = (
                 self.supabase.table("asg_members")
                 .select("*")
                 .eq("inoffice", True)
                 .execute()
             )
-
             if not response.data:
-                return {"message": "No active members found", "members": []}
+                return
 
-            signed_out_members = []
-            la_tz = timezone("America/Los_Angeles")
-            now = datetime.now(la_tz)
+            now = datetime.now(timezone.utc)
+            signed_out_members = []  # Track members who were signed out
 
             for member in response.data:
                 active_session = self.get_active_session(member["id"])
                 if active_session:
+                    # Calculate time difference
+                    sign_in_time = isoparse(active_session["sign_in_time"])
+                    time_diff = (
+                        now - sign_in_time
+                    ).total_seconds() / 3600.0  # Convert to hours
+
+                    # Set duration based on time difference
+                    duration = 0.0 if time_diff < 1.0 else 1.0
+
+                    # Prepare update data for auto sign-out
                     update_data = {
                         "sign_out_time": now.isoformat(),
-                        "duration": 0.0,
+                        "duration": duration,
                         "message": f"{member['name'].split(' ')[0]} Automatically signed out.",
                     }
-
                     self.supabase.table("asg_logs").update(update_data).eq(
                         "id", active_session["id"]
                     ).execute()
 
+                    # Update member status to mark them as signed out
                     self.update_member(member["id"], {"inoffice": False})
+
+                    # Add to the list of signed out members
                     signed_out_members.append(
                         f"{member['name']} ({member['position']})"
                     )
 
-            return {
-                "message": "Auto sign-out completed",
-                "members": signed_out_members,
-                "count": len(signed_out_members),
-            }
+            # Return the list of signed out members for logging
+            if signed_out_members:
+                return {
+                    "message": f"Auto sign-out executed for: {', '.join(signed_out_members)}",
+                    "members": signed_out_members,
+                }
+            return None
 
-        except (ConnectionError, TimeoutError) as e:
-            print(f"Connection error: {e}")
-            return {"error": "connection_error", "members": []}
         except Exception as error:
-            print(f"Unexpected error: {error}")
-            return {"error": str(error), "members": []}
+            print(f"Error during auto sign out: {error}")
+            return None
 
     def upload_system_logs(self, logs: str) -> bool:
         """
