@@ -4,7 +4,7 @@ Hours checking window module.
 Allows users to check their accumulated hours by tapping their RFID card.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Thread
 from typing import Optional
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -206,7 +206,7 @@ class CheckHoursWindow(QtWidgets.QDialog):
 
     def handle_card_tap(self, rfid_tag: str) -> None:
         """
-        Handles a card tap event, displays the member's hours.
+        Handles a card tap event, displays the member's hours for the current week.
 
         @param rfid_tag: The RFID card identifier
         """
@@ -221,44 +221,38 @@ class CheckHoursWindow(QtWidgets.QDialog):
             # Get active session if any
             active_session = self.db_manager.get_active_session(member["id"])
 
-            # Get all sessions for the member
-            response = (
-                self.db_manager.supabase.table("asg_logs")
-                .select("*")
-                .eq("user_id", member["id"])
-                .order(
-                    "sign_in_time", desc=True
-                )  # Order by sign_in_time in descending order
-                .execute()
-            )
-
-            if not response.data:
-                self.info_label.setText(f"No hours recorded for {member['name']}")
-                return
-
-            # Calculate total hours and current week hours
-            total_hours = 0.0
-            current_week_hours = 0.0
-
+            # Get all sessions for the member from the current week
             # Get the start of the current week (Monday)
             current_date = datetime.now()
-            start_of_week = current_date - QtCore.timedelta(days=current_date.weekday())
+            start_of_week = current_date - timedelta(days=current_date.weekday())
             start_of_week = start_of_week.replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
 
+            # Query only sessions from this week
+            response = (
+                self.db_manager.supabase.table("asg_logs")
+                .select("*")
+                .eq("user_id", member["id"])
+                .gte("sign_in_time", start_of_week.isoformat() + "Z")
+                .order("sign_in_time", desc=True)
+                .execute()
+            )
+
+            if not response.data and not active_session:
+                self.info_label.setText(
+                    f"No hours recorded this week for {member['name']}"
+                )
+                return
+
+            # Calculate current week hours
+            current_week_hours = 0.0
+
             for session in response.data:
                 duration = float(session.get("duration", 0))
-                total_hours += duration
+                current_week_hours += duration
 
-                # Check if the session is from the current week
-                session_date = datetime.fromisoformat(
-                    session["sign_in_time"].replace("Z", "+00:00")
-                )
-                if session_date >= start_of_week:
-                    current_week_hours += duration
-
-            # Add current active session duration to both totals if exists
+            # Add current active session duration if exists
             if active_session:
                 sign_in_time = datetime.fromisoformat(
                     active_session["sign_in_time"].replace("Z", "+00:00")
@@ -268,14 +262,12 @@ class CheckHoursWindow(QtWidgets.QDialog):
                     current_time - sign_in_time
                 ).total_seconds() / 3600.0
 
-                total_hours += current_duration
                 if sign_in_time >= start_of_week:
                     current_week_hours += current_duration
 
             # Format the display message
             message_parts = []
             message_parts.append(f"Member: {member['name']} ({member['position']})")
-            message_parts.append(f"Total Hours: {total_hours:.2f}")
             message_parts.append(f"Current Week Hours: {current_week_hours:.2f}")
 
             if active_session:
