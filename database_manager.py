@@ -12,6 +12,7 @@ from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import config
+from discord_webhook import DiscordNotifier
 
 # Load environment variables from .env file
 load_dotenv()
@@ -240,65 +241,85 @@ class DatabaseManager:
 
     def auto_sign_out(self) -> None:
         """
-        Automatically signs out all active members.
-        Intended to be executed at a scheduled time (e.g., 7:00 pm).
-        Sets duration to 0 if sign-in time is less than an hour ago.
+        Automatically signs out members who have been active for more than 12 hours or past midnight.
+        This is a failsafe to ensure accidental missed sign-outs don't accumulate excessive hours.
         """
         try:
-            # Retrieve all members currently in the office.
+            now_time = datetime.now(timezone.utc)
+            today_date = now_time.date()
+            midnight_today = datetime.combine(today_date, datetime.min.time()).replace(
+                tzinfo=timezone.utc
+            )
+
+            # Get all active sessions
             response = (
-                self.supabase.table("asg_members")
+                self.supabase.table("asg_logs")
                 .select("*")
-                .eq("inoffice", True)
+                .is_("sign_out_time", "null")
                 .execute()
             )
+
             if not response.data:
                 return
 
-            now = datetime.now(timezone.utc)
-            signed_out_members = []  # Track members who were signed out
+            for session in response.data:
+                try:
+                    # Get member information for Discord notification
+                    member = None
+                    if session.get("user_id"):
+                        member_response = (
+                            self.supabase.table("asg_members")
+                            .select("*")
+                            .eq("id", session["user_id"])
+                            .execute()
+                        )
+                        if member_response.data:
+                            member = member_response.data[0]
 
-            for member in response.data:
-                active_session = self.get_active_session(member["id"])
-                if active_session:
-                    # Calculate time difference
-                    sign_in_time = isoparse(active_session["sign_in_time"])
-                    time_diff = (
-                        now - sign_in_time
-                    ).total_seconds() / 3600.0  # Convert to hours
+                    # Parse the sign in time
+                    sign_in_time = isoparse(session["sign_in_time"])
 
-                    # Set duration based on time difference
-                    duration = 0.0 if time_diff < 1.0 else 1.0
+                    # Calculate session duration so far
+                    duration_hours = (now_time - sign_in_time).total_seconds() / 3600.0
 
-                    # Prepare update data for auto sign-out
-                    update_data = {
-                        "sign_out_time": now.isoformat(),
-                        "duration": duration,
-                        "message": f"{member['name'].split(' ')[0]} Automatically signed out.",
-                    }
-                    self.supabase.table("asg_logs").update(update_data).eq(
-                        "id", active_session["id"]
-                    ).execute()
+                    # Auto sign-out under the following conditions:
+                    # 1. If the session has lasted more than 12 hours
+                    # 2. If the session started before midnight today (crossed to a new day)
+                    # 3. If the current time is after the auto sign-out hour
+                    if (
+                        duration_hours > 12
+                        or sign_in_time < midnight_today
+                        or now_time.hour >= config.AUTO_SIGNOUT_HOUR
+                    ):
+                        # Automatically sign out the member
+                        update_data = {
+                            "sign_out_time": now_time.isoformat(),
+                            "duration": duration_hours,
+                            "message": "Auto signed out by system",
+                            "auto_sign_out": True,
+                        }
+                        self.supabase.table("asg_logs").update(update_data).eq(
+                            "id", session["id"]
+                        ).execute()
 
-                    # Update member status to mark them as signed out
-                    self.update_member(member["id"], {"inoffice": False})
+                        # Update the member's in-office status
+                        if session.get("user_id"):
+                            self.update_member(session["user_id"], {"inoffice": False})
 
-                    # Add to the list of signed out members
-                    signed_out_members.append(
-                        f"{member['name']} ({member['position']})"
+                        # Send Discord notification for auto sign-out
+                        if config.DISCORD_WEBHOOK_ENABLED and member:
+                            DiscordNotifier.send_tap_out_notification(
+                                member, duration_hours
+                            )
+
+                except Exception as session_error:
+                    print(
+                        f"Error processing auto sign-out for session: {session_error}"
                     )
-
-            # Return the list of signed out members for logging
-            if signed_out_members:
-                return {
-                    "message": f"Auto sign-out executed for: {', '.join(signed_out_members)}",
-                    "members": signed_out_members,
-                }
-            return None
+                    continue
 
         except Exception as error:
-            print(f"Error during auto sign out: {error}")
-            return None
+            print(f"Auto sign-out error: {error}")
 
     def upload_system_logs(self, logs: str) -> bool:
         """

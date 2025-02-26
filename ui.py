@@ -15,6 +15,7 @@ from database_manager import DatabaseManager
 from rfid_reader import RFIDReader
 from registration_window import RegistrationWindow
 import config
+from discord_webhook import DiscordNotifier
 
 
 class AttendanceApp(QtWidgets.QMainWindow):
@@ -495,6 +496,14 @@ class AttendanceApp(QtWidgets.QMainWindow):
                         f"Sign in recorded for {elected_name} ({position_name}).",
                         is_sign_in=True,
                     )
+
+                    # Send Discord notification for sign-in
+                    if config.DISCORD_WEBHOOK_ENABLED:
+                        threading.Thread(
+                            target=DiscordNotifier.send_tap_in_notification,
+                            args=(member,),
+                            daemon=True,
+                        ).start()
                 else:
                     self.show_message("Error recording sign in.", error=True)
                     self.set_circle_color("red")
@@ -511,6 +520,14 @@ class AttendanceApp(QtWidgets.QMainWindow):
                         f"Duration: {duration:.2f} hours.",
                         is_sign_out=True,
                     )
+
+                    # Send Discord notification for sign-out
+                    if config.DISCORD_WEBHOOK_ENABLED:
+                        threading.Thread(
+                            target=DiscordNotifier.send_tap_out_notification,
+                            args=(member, duration),
+                            daemon=True,
+                        ).start()
                 else:
                     self.show_message("Error recording sign out.", error=True)
                     self.set_circle_color("red")
