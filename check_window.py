@@ -249,28 +249,51 @@ class CheckHoursWindow(QtWidgets.QDialog):
             current_week_hours = 0.0
 
             for session in response.data:
-                duration = float(session.get("duration", 0))
-                current_week_hours += duration
+                # If duration is None, calculate it from sign_in_time to now (active session)
+                duration = session.get("duration")
+                if duration is None:
+                    try:
+                        sign_in_time = datetime.fromisoformat(
+                            session["sign_in_time"].replace("Z", "+00:00")
+                        )
+                        current_time = datetime.now(sign_in_time.tzinfo)
+                        duration = (
+                            current_time - sign_in_time
+                        ).total_seconds() / 3600.0
+                    except (ValueError, TypeError, KeyError) as e:
+                        print(f"Error calculating session duration: {e}")
+                        continue
+
+                try:
+                    current_week_hours += float(duration)
+                except (ValueError, TypeError):
+                    print(f"Invalid duration value in session: {duration}")
+                    continue
 
             # Add current active session duration if exists
+            current_duration = 0.0
             if active_session:
-                sign_in_time = datetime.fromisoformat(
-                    active_session["sign_in_time"].replace("Z", "+00:00")
-                )
-                current_time = datetime.now(sign_in_time.tzinfo)
-                current_duration = (
-                    current_time - sign_in_time
-                ).total_seconds() / 3600.0
+                try:
+                    sign_in_time = datetime.fromisoformat(
+                        active_session["sign_in_time"].replace("Z", "+00:00")
+                    )
+                    current_time = datetime.now(sign_in_time.tzinfo)
+                    current_duration = (
+                        current_time - sign_in_time
+                    ).total_seconds() / 3600.0
 
-                if sign_in_time >= start_of_week:
-                    current_week_hours += current_duration
+                    if sign_in_time >= start_of_week:
+                        current_week_hours += current_duration
+                except (ValueError, TypeError, KeyError) as e:
+                    print(f"Error calculating current session duration: {e}")
+                    current_duration = 0.0
 
             # Format the display message
             message_parts = []
             message_parts.append(f"Member: {member['name']} ({member['position']})")
             message_parts.append(f"Current Week Hours: {current_week_hours:.2f}")
 
-            if active_session:
+            if active_session and current_duration > 0:
                 message_parts.append("\nCurrent Session:")
                 message_parts.append(
                     f"Signed in at: {sign_in_time.strftime('%I:%M %p')}"
@@ -283,6 +306,9 @@ class CheckHoursWindow(QtWidgets.QDialog):
         except Exception as e:
             self.info_label.setText(f"Error checking hours: {str(e)}")
             self.info_label.setStyleSheet("color: red;")
+            print(
+                f"Detailed error in handle_card_tap: {str(e)}"
+            )  # Add detailed logging
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """
