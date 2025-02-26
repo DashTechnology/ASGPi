@@ -262,15 +262,9 @@ class DatabaseManager:
             for member in response.data:
                 active_session = self.get_active_session(member["id"])
                 if active_session:
-                    # sign_in_time = isoparse(active_session["sign_in_time"]).astimezone(
-                    #     la_tz
-                    # )
-                    # time_diff = (now - sign_in_time).total_seconds() / 3600.0
-                    duration = 0.0
-
                     update_data = {
                         "sign_out_time": now.isoformat(),
-                        "duration": duration,
+                        "duration": 0.0,
                         "message": f"{member['name'].split(' ')[0]} Automatically signed out.",
                     }
 
