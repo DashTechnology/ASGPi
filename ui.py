@@ -15,7 +15,7 @@ from database_manager import DatabaseManager
 from rfid_reader import RFIDReader
 from registration_window import RegistrationWindow
 import config
-from discord_webhook import DiscordNotifier
+from discord_webhook import DiscordWebhook
 
 
 class AttendanceApp(QtWidgets.QMainWindow):
@@ -49,6 +49,10 @@ class AttendanceApp(QtWidgets.QMainWindow):
         self.auto_signout_attempted = (
             False  # Track if auto sign-out was attempted this hour
         )
+
+        # Initialize Discord webhook
+        self.discord_webhook = DiscordWebhook(config.DISCORD_WEBHOOK_URL)
+
         self.setup_ui()
 
         try:
@@ -497,13 +501,12 @@ class AttendanceApp(QtWidgets.QMainWindow):
                         is_sign_in=True,
                     )
 
-                    # Send Discord notification for sign-in
-                    if config.DISCORD_WEBHOOK_ENABLED:
-                        threading.Thread(
-                            target=DiscordNotifier.send_tap_in_notification,
-                            args=(member,),
-                            daemon=True,
-                        ).start()
+                    # Send Discord notification for tap in
+                    self.discord_webhook.send_tap_notification(
+                        member_name=elected_name,
+                        position=position_name,
+                        event_type="in",
+                    )
                 else:
                     self.show_message("Error recording sign in.", error=True)
                     self.set_circle_color("red")
@@ -512,7 +515,7 @@ class AttendanceApp(QtWidgets.QMainWindow):
                 duration = self.db_manager.sign_out(rfid_tag)
                 if duration is not None:
                     self.show_message(
-                        f"Good bye, {first_name}! Signed out at {current_time}"
+                        f"Goodbye {first_name}! Signed out at {current_time}"
                     )
                     self.set_circle_color("red")
                     self.append_log(
@@ -521,13 +524,13 @@ class AttendanceApp(QtWidgets.QMainWindow):
                         is_sign_out=True,
                     )
 
-                    # Send Discord notification for sign-out
-                    if config.DISCORD_WEBHOOK_ENABLED:
-                        threading.Thread(
-                            target=DiscordNotifier.send_tap_out_notification,
-                            args=(member, duration),
-                            daemon=True,
-                        ).start()
+                    # Send Discord notification for tap out
+                    self.discord_webhook.send_tap_notification(
+                        member_name=elected_name,
+                        position=position_name,
+                        event_type="out",
+                        duration=duration,
+                    )
                 else:
                     self.show_message("Error recording sign out.", error=True)
                     self.set_circle_color("red")
@@ -622,6 +625,21 @@ class AttendanceApp(QtWidgets.QMainWindow):
                         f"Auto sign-out successful for: {members_list}",
                         is_sign_out=True,
                     )
+
+                    # Send Discord notification for auto sign-out
+                    for member in result["members"]:
+                        # Extract name and position from the member string
+                        # Format is "Name (Position)"
+                        name_parts = member.split(" (")
+                        if len(name_parts) == 2:
+                            name = name_parts[0]
+                            position = name_parts[1].rstrip(")")
+                            self.discord_webhook.send_tap_notification(
+                                member_name=name,
+                                position=position,
+                                event_type="out",
+                                duration=None,  # Duration not available for auto sign-out
+                            )
                 else:
                     self.append_log(
                         "Auto sign-out completed - no active sessions found"

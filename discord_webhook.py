@@ -1,147 +1,86 @@
 #!/usr/bin/env python3
 """
-Discord webhook integration for attendance system.
-Sends notifications to Discord when members tap in or tap out.
+Discord webhook handler for sending attendance notifications.
+Provides functionality to send tap in/out notifications to a Discord channel.
 """
 
 import json
-import requests
-from typing import Dict, Any, Optional
 from datetime import datetime
-import config
+from typing import Dict, Optional, Union
+import requests
 
 
-class DiscordNotifier:
+class DiscordWebhook:
     """
     Handles sending notifications to Discord via webhooks.
+    Manages tap in/out event notifications with proper formatting.
     """
 
-    @staticmethod
-    def send_tap_in_notification(member: Dict[str, Any]) -> bool:
+    def __init__(self, webhook_url: str) -> None:
         """
-        Sends a notification to Discord when a member taps in.
+        Initialize the Discord webhook handler.
 
-        @param member: Dictionary containing member information
-        @return: True if successful, False otherwise
+        @param webhook_url: The Discord webhook URL to send notifications to
         """
-        # Check if Discord webhook is enabled
-        if not config.DISCORD_WEBHOOK_ENABLED:
-            return True
+        self.webhook_url = webhook_url
 
-        try:
-            current_time = datetime.now().strftime("%I:%M %p on %B %d, %Y")
-            name = member.get("name", "Unknown Member")
-            position = member.get("position", "Unknown Position")
-
-            # Create embedded message
-            embed = {
-                "title": "Member Signed In",
-                "description": f"{name} has signed in at {current_time}",
-                "color": 3066993,  # Green color
-                "fields": [
-                    {"name": "Position", "value": position, "inline": True},
-                    {"name": "Time", "value": current_time, "inline": True},
-                ],
-                "thumbnail": {"url": "https://i.imgur.com/zZEKuq4.png"},  # Sign in icon
-                "footer": {"text": "ASG Attendance System"},
-                "timestamp": datetime.utcnow().isoformat(),
-            }
-
-            # Send webhook
-            payload = {"embeds": [embed]}
-
-            try:
-                response = requests.post(
-                    config.DISCORD_WEBHOOK_URL,
-                    data=json.dumps(payload),
-                    headers={"Content-Type": "application/json"},
-                    timeout=5,  # Set timeout to 5 seconds
-                )
-
-                if response.status_code == 204:
-                    print(f"Successfully sent Discord sign-in notification for {name}")
-                    return True
-                else:
-                    print(
-                        f"Discord webhook returned status code: {response.status_code}"
-                    )
-                    return False
-            except requests.RequestException as req_error:
-                print(f"Network error during Discord notification: {str(req_error)}")
-                return False
-        except Exception as e:
-            print(f"Error sending Discord tap in notification: {str(e)}")
-            return False
-
-    @staticmethod
-    def send_tap_out_notification(
-        member: Dict[str, Any], duration: Optional[float] = None
+    def send_tap_notification(
+        self,
+        member_name: str,
+        position: str,
+        event_type: str,
+        duration: Optional[float] = None,
     ) -> bool:
         """
-        Sends a notification to Discord when a member taps out.
+        Send a tap in/out notification to Discord.
 
-        @param member: Dictionary containing member information
-        @param duration: Duration of the session in hours
-        @return: True if successful, False otherwise
+        @param member_name: Name of the member
+        @param position: Position/role of the member
+        @param event_type: Type of event ("in" or "out")
+        @param duration: Optional duration in hours for tap out events
+        @return: True if notification was sent successfully, False otherwise
         """
-        # Check if Discord webhook is enabled
-        if not config.DISCORD_WEBHOOK_ENABLED:
-            return True
-
         try:
-            current_time = datetime.now().strftime("%I:%M %p on %B %d, %Y")
-            name = member.get("name", "Unknown Member")
-            position = member.get("position", "Unknown Position")
+            # Validate event type
+            if event_type not in ["in", "out"]:
+                raise ValueError("Event type must be either 'in' or 'out'")
 
-            duration_str = "Unknown"
-            if duration is not None:
-                hours = int(duration)
-                minutes = int((duration - hours) * 60)
-                duration_str = f"{hours} hours, {minutes} minutes"
+            # Create the embed for the notification
+            current_time = datetime.now().strftime("%I:%M %p")
 
-            # Create embedded message
-            embed = {
-                "title": "Member Signed Out",
-                "description": f"{name} has signed out at {current_time}",
-                "color": 15158332,  # Red color
-                "fields": [
-                    {"name": "Position", "value": position, "inline": True},
-                    {"name": "Time", "value": current_time, "inline": True},
-                    {
-                        "name": "Session Duration",
-                        "value": duration_str,
-                        "inline": False,
-                    },
-                ],
-                "thumbnail": {
-                    "url": "https://i.imgur.com/38pZcaE.png"  # Sign out icon
-                },
-                "footer": {"text": "ASG Attendance System"},
+            embed: Dict[str, Union[str, int]] = {
+                "title": f"Member Tap {event_type.title()}",
+                "description": f"**{member_name}** ({position})",
+                "color": (
+                    0x00FF00 if event_type == "in" else 0xFF0000
+                ),  # Green for in, Red for out
                 "timestamp": datetime.utcnow().isoformat(),
+                "fields": [{"name": "Time", "value": current_time, "inline": True}],
             }
 
-            # Send webhook
-            payload = {"embeds": [embed]}
-
-            try:
-                response = requests.post(
-                    config.DISCORD_WEBHOOK_URL,
-                    data=json.dumps(payload),
-                    headers={"Content-Type": "application/json"},
-                    timeout=5,  # Set timeout to 5 seconds
+            # Add duration field for tap out events
+            if event_type == "out" and duration is not None:
+                hours = int(duration)
+                minutes = int((duration - hours) * 60)
+                duration_str = f"{hours}h {minutes}m"
+                embed["fields"].append(
+                    {"name": "Duration", "value": duration_str, "inline": True}
                 )
 
-                if response.status_code == 204:
-                    print(f"Successfully sent Discord sign-out notification for {name}")
-                    return True
-                else:
-                    print(
-                        f"Discord webhook returned status code: {response.status_code}"
-                    )
-                    return False
-            except requests.RequestException as req_error:
-                print(f"Network error during Discord notification: {str(req_error)}")
-                return False
-        except Exception as e:
-            print(f"Error sending Discord tap out notification: {str(e)}")
+            # Prepare the webhook payload
+            payload = {"embeds": [embed]}
+
+            # Send the webhook request
+            response = requests.post(
+                self.webhook_url,
+                data=json.dumps(payload),
+                headers={"Content-Type": "application/json"},
+                timeout=5,
+            )
+
+            # Check if the request was successful
+            return response.status_code == 204
+
+        except Exception as error:
+            print(f"Error sending Discord notification: {error}")
             return False

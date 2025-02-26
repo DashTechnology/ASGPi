@@ -39,8 +39,5 @@ MESSAGE_DISPLAY_DURATION: int = 5000
 # Development mode flag. When set to True, bypasses sign-in time restrictions and sleep/wake auto adjustments.
 DEV_MODE: bool = False
 
-# Discord Webhook Settings
-DISCORD_WEBHOOK_ENABLED: bool = True
-DISCORD_WEBHOOK_URL: str = (
-    "https://discord.com/api/webhooks/1344389702735761418/u5S9fgUadcS2lfFpgGnBXwJ9nwS87uORHyR_5ermeDeiyFPdmWVUI8QXaCCSf33j4Kml"
-)
+# Discord webhook configuration
+DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1344389702735761418/u5S9fgUadcS2lfFpgGnBXwJ9nwS87uORHyR_5ermeDeiyFPdmWVUI8QXaCCSf33j4Kml"
